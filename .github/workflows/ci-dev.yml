@@ -99,7 +99,7 @@ jobs:
 
       - id: docker-push-tagged
         name: Tag Docker image and push to Google Artifact Registry
-        uses: docker/build-push-action@v3
+        uses: docker/build-push-action@v7
         with:
           file: Dockerfile
           push: true

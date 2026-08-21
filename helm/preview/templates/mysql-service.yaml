@@ -1,0 +1,13 @@
+{{- if .Values.mysql.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql
+  namespace: {{ include "preview.namespace" . }}
+spec:
+  selector:
+    app: mysql
+  ports:
+    - port: {{ .Values.mysql.port | default 3306 }}
+      targetPort: {{ .Values.mysql.port | default 3306 }}
+{{- end }}

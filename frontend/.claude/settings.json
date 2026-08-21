@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pnpm audit *)",
+      "Bash(rtk pnpm *)",
+      "Bash(pnpm info *)",
+      "Bash(rtk ls *)",
+      "Bash(rtk read *)",
+      "Bash(rtk find *)"
+    ]
+  }
+}

@@ -1,0 +1,11 @@
+<type>(<scope>): <subject up to 72 chars>
+
+# Body — explain *why*, not *what*. Wrap at ~72 chars per line.
+# Multiple paragraphs OK.
+
+Refs: <TICKET-ID>
+
+# === Conventional Commits cheatsheet ===
+# Types: feat | fix | docs | style | refactor | test | chore | perf | ci | build
+# Breaking change: append '!' after scope, e.g. `feat(api)!: rename endpoint`
+# Refs footer is REQUIRED for feat/fix.

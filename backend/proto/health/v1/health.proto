@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+package health.v1;
+
+option go_package = "backend-belajar-lintas-ronald/gen/health/v1;healthv1";
+
+service Health {
+  rpc Check(CheckRequest) returns (CheckReply);
+}
+
+message CheckRequest { string service = 1; }
+message CheckReply { string status = 1; }

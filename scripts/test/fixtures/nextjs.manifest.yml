@@ -1,0 +1,13 @@
+version: 1
+name: frontend-belajar-lintas-ronald
+axes:
+  rendering:
+    multiplicity: exactly_one
+    options:
+      ssr: {}
+      csr: {}
+  state:
+    multiplicity: exactly_one
+    options:
+      zustand: {}
+      jotai: {}

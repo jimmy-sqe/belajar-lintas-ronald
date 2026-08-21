@@ -1,0 +1,20 @@
+# Mirror of pyproject.toml dependencies for tools/CI that don't read pyproject.
+# Source of truth: pyproject.toml. Keep both in sync when bumping versions.
+
+# Runtime
+pytest==8.3.3
+pytest-playwright==0.5.2
+pytest-xdist==3.6.1
+pytest-rerunfailures==14.0
+pytest-html==4.1.1
+allure-pytest==2.13.5
+pydantic-settings==2.7.0
+python-dotenv==1.0.0
+requests==2.32.3
+faker==30.3.0
+
+# Dev
+ruff==0.7.0
+mypy==1.13.0
+types-requests==2.32.0.20240914
+pre-commit==4.0.1

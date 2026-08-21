@@ -1,0 +1,45 @@
+# Frontend: <repoName>-pr-<number>.preview.squantumengine.com
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: frontend-route
+  namespace: {{ include "preview.namespace" . }}
+  labels:
+    {{- include "preview.labels" . | nindent 4 }}
+spec:
+  entryPoints:
+    {{- range .Values.traefik.entryPoints }}
+    - {{ . }}
+    {{- end }}
+  routes:
+    - match: Host(`{{ .Values.repoName }}-pr-{{ .Values.pr.number }}.{{ .Values.domain }}`)
+      kind: Rule
+      services:
+        - name: frontend
+          port: {{ .Values.frontend.service.port }}
+  {{- if .Values.traefik.tls }}
+  tls: {}
+  {{- end }}
+---
+# Backend API: <repoName>-pr-<number>-api.preview.squantumengine.com
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: backend-route
+  namespace: {{ include "preview.namespace" . }}
+  labels:
+    {{- include "preview.labels" . | nindent 4 }}
+spec:
+  entryPoints:
+    {{- range .Values.traefik.entryPoints }}
+    - {{ . }}
+    {{- end }}
+  routes:
+    - match: Host(`{{ .Values.repoName }}-pr-{{ .Values.pr.number }}-api.{{ .Values.domain }}`)
+      kind: Rule
+      services:
+        - name: backend
+          port: {{ .Values.backend.service.port }}
+  {{- if .Values.traefik.tls }}
+  tls: {}
+  {{- end }}

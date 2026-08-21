@@ -1,0 +1,20 @@
+/* Horizon design tokens — shared across all pages and Horizon component internals.
+ * Source: docs/todo-app/design/hz/tokens.css. Per-feature design styles live in
+ * (auth)/login/_styles/login.css and (protected)/todos/_styles/todoapp.css.
+ *
+ * @import must precede all rules (CSS spec). Turbopack enforces this strictly.
+ */
+@import './design-tokens.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.theme-hz-blue {
+  --hz-horizon-primary: #0066cc;
+  --hz-horizon-primary-dark: #003d7a;
+  --hz-horizon-primary-medium: #0052a3;
+  --hz-horizon-primary-light: #1a7dff;
+  --hz-horizon-primary-soft: #e6f0ff;
+  --hz-horizon-primary-pale: #e6f0ff;
+}

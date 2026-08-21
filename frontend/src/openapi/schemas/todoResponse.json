@@ -1,0 +1,14 @@
+{
+  "type": "object",
+  "properties": {
+    "id": { "type": "string", "format": "uuid" },
+    "title": { "type": "string" },
+    "description": { "type": "string" },
+    "due_date": { "type": "string", "format": "date-time", "nullable": true },
+    "created_at": { "type": "string", "format": "date-time" },
+    "created_by": { "type": "string", "format": "uuid" },
+    "modified_at": { "type": "string", "format": "date-time" },
+    "modified_by": { "type": "string", "format": "uuid" }
+  },
+  "x-readme-ref-name": "TodoResponse"
+}

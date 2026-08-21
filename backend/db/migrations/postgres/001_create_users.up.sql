@@ -1,0 +1,12 @@
+CREATE TABLE IF NOT EXISTS users (
+    id              UUID PRIMARY KEY,
+    email           VARCHAR(255) NOT NULL UNIQUE,
+    password_hash   VARCHAR(255) NOT NULL,
+    name            VARCHAR(255),
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    created_by      UUID,
+    modified_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    modified_by     UUID
+);
+
+CREATE INDEX IF NOT EXISTS idx_users_email ON users (LOWER(email));

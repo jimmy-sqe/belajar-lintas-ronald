@@ -1,0 +1,13 @@
+{{- if .Values.mongodb.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongodb
+  namespace: {{ include "preview.namespace" . }}
+spec:
+  selector:
+    app: mongodb
+  ports:
+    - port: {{ .Values.mongodb.port | default 27017 }}
+      targetPort: {{ .Values.mongodb.port | default 27017 }}
+{{- end }}

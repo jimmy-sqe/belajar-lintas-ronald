@@ -1,0 +1,171 @@
+openapi: 3.0.3
+info:
+  title: Sample JWT-Refresh Auth Contract
+  version: 1.0.0
+  description: |
+    Reference contract for src/services/auth/jwt-refresh/. Backend returns
+    access + refresh tokens with explicit expiry; client decodes expiry
+    and refreshes proactively.
+
+paths:
+  /v1/auth/login:
+    post:
+      summary: Sign in with username + password
+      operationId: jwtLogin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password]
+              properties:
+                username: { type: string }
+                password: { type: string }
+      responses:
+        '200':
+          description: Signed in successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JwtSignInResponse'
+        '401':
+          $ref: '#/components/responses/Error'
+
+  /v1/auth/logout:
+    post:
+      summary: Sign out current session
+      operationId: jwtLogout
+      responses:
+        '200':
+          description: Signed out
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  payload:
+                    type: object
+                    properties: { success: { type: boolean, example: true } }
+
+  /v1/auth/renew:
+    post:
+      summary: Refresh access token using refresh token
+      operationId: jwtRenew
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refresh_token]
+              properties: { refresh_token: { type: string } }
+      responses:
+        '200':
+          description: Refreshed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JwtRefreshResponse'
+        '401':
+          $ref: '#/components/responses/Error'
+
+  /v1/auth/change-password:
+    patch:
+      summary: Change password for the current user
+      operationId: jwtChangePassword
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [currentPassword, newPassword]
+              properties:
+                currentPassword: { type: string }
+                newPassword: { type: string }
+      responses:
+        '200':
+          description: Password changed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  payload:
+                    type: object
+                    properties: { success: { type: boolean, example: true } }
+
+  /v1/auth/reset-password:
+    post:
+      summary: Request a password reset email
+      operationId: jwtResetPassword
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties: { email: { type: string, format: email } }
+      responses:
+        '200':
+          description: Reset email queued
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  payload:
+                    type: object
+                    properties: { success: { type: boolean, example: true } }
+
+components:
+  schemas:
+    JwtSignInResponse:
+      type: object
+      properties:
+        payload:
+          type: object
+          required: [access_token, refresh_token, access_token_expires_in_sec, refresh_token_expires_in_sec, issued_at, user]
+          properties:
+            access_token: { type: string }
+            refresh_token: { type: string }
+            access_token_expires_in_sec: { type: integer, example: 3600 }
+            refresh_token_expires_in_sec: { type: integer, example: 86400 }
+            issued_at: { type: integer, description: ms-since-epoch }
+            user:
+              type: object
+              properties:
+                id: { type: string }
+                name: { type: string }
+                email: { type: string, format: email }
+            permissions:
+              type: array
+              items: { type: string }
+
+    JwtRefreshResponse:
+      type: object
+      properties:
+        payload:
+          type: object
+          required: [access_token, access_token_expires_in_sec, issued_at]
+          properties:
+            access_token: { type: string }
+            access_token_expires_in_sec: { type: integer }
+            issued_at: { type: integer }
+
+    ErrorResponse:
+      type: object
+      properties:
+        success: { type: boolean, example: false }
+        code: { type: integer }
+        message: { type: string }
+        timestamp: { type: string, format: date-time }
+
+  responses:
+    Error:
+      description: Error
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }

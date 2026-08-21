@@ -1,0 +1,101 @@
+# Monorepo root pre-commit config.
+#
+# Per-language hook scoping:
+# - Go hooks (go-fmt, go-mod-tidy, golangci-lint) scoped via `files: ^backend/`.
+# - Next.js uses husky inside frontend/.husky/ for FE-specific lint/format.
+# - Shared hooks (gitleaks, commit-msg conventional-commits) run on all files.
+
+default_language_version:
+  python: python3
+
+default_stages: [pre-commit]
+
+repos:
+    # Using template for Golang pre commit. See https://github.com/tekwizely/pre-commit-golang
+    # for details and usage of the listed commands and other available commands.
+    # Fast checks (mod tidy) run at pre-commit; expensive checks
+    # (go-test, golangci-lint) move to pre-push to keep commit speed low.
+    # ==========================================================================
+-   repo: https://github.com/tekwizely/pre-commit-golang
+    rev: v1.0.0-rc.1
+    hooks:
+    #
+    # Go Mod Tidy (fast: stays at pre-commit)
+    #
+    -   id: go-mod-tidy
+        files: ^backend/
+    -   id: go-mod-tidy-repo
+        files: ^backend/
+    #
+    # Go Test (slow: moved to pre-push)
+    #
+    -   id: go-test-mod
+        files: ^backend/.*\.go$
+        stages: [pre-push]
+    -   id: go-test-repo-mod
+        args: ['-p=1', '-cover', './...', '-coverprofile', 'cover.out']
+        files: ^backend/.*\.go$
+        stages: [pre-push]
+    #
+    # GolangCI-Lint (slow: moved to pre-push)
+    # - Fast Multi-Linter
+    # - Can be configured to replace MOST other hooks
+    # - Supports repo config file for configuration
+    # - https://github.com/golangci/golangci-lint
+    #
+    -   id: golangci-lint-mod
+        files: ^backend/.*\.go$
+        stages: [pre-push]
+    -   id: golangci-lint-repo-mod
+        files: ^backend/.*\.go$
+        stages: [pre-push]
+
+    # Gitleaks - Scan repository for hardcoded secrets and keys
+    # Using same version and configuration as GitHub Action
+    # ==========================================================================
+-   repo: https://github.com/gitleaks/gitleaks
+    rev: v8.19.3
+    hooks:
+    -   id: gitleaks
+        name: Detect hardcoded secrets
+        description: Detect hardcoded secrets using Gitleaks
+        entry: gitleaks dir --verbose --redact --config .gitleaks.toml
+        language: golang
+        pass_filenames: false
+
+    # Conventional Commits validator (commit-msg stage)
+    # ==========================================================================
+-   repo: https://github.com/compilerla/conventional-pre-commit
+    rev: v3.6.0
+    hooks:
+    -   id: conventional-pre-commit
+        stages: [commit-msg]
+        args:
+          - feat
+          - fix
+          - docs
+          - style
+          - refactor
+          - test
+          - chore
+          - perf
+          - ci
+          - build
+
+    # Custom local hooks
+    # ==========================================================================
+-   repo: local
+    hooks:
+    -   id: refs-footer-required
+        name: Require Refs footer for feat/fix commits
+        language: script
+        entry: backend/scripts/check-refs-footer.sh
+        stages: [commit-msg]
+
+    -   id: branch-naming
+        name: Validate branch name format
+        language: script
+        entry: backend/scripts/check-branch-name.sh
+        stages: [pre-push]
+        always_run: true
+        pass_filenames: false

@@ -1,0 +1,104 @@
+name: Reusable CD
+
+on:
+  workflow_call:
+    secrets:
+      SECRETMANAGER_SECRET:
+        description: Secret for secret manager.
+        required: true
+
+      # TODO(boilerplate): rename/remove if your service has no private Go module dependencies.
+      SSH_PRIVATE_KEY_PRIVATE_GO_MODULE:
+        description: SSH key for private Go module repository.
+        required: true
+
+      WIREGUARD_CONFIG:
+        description: Wireguard profile to connect private network.
+        required: true
+
+      SONAR_HOST_URL:
+        description: Sonar Server URL.
+        required: true
+
+      SONAR_TOKEN:
+        description: Token to authenticate sonar.
+        required: true
+
+jobs:
+  run-tests:
+    name: Run all tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Google Login
+        uses: google-github-actions/auth@v1
+        with:
+          credentials_json: '${{ secrets.SECRETMANAGER_SECRET }}'
+
+      - name: Copy Google Credentials JSON File
+        shell: bash
+        run: |
+          if [[ -n "${GOOGLE_APPLICATION_CREDENTIALS}" ]]; then
+            cp "${GOOGLE_APPLICATION_CREDENTIALS}" "./data/<your-service-account>.json"
+          fi
+
+      - name: Setup SSH Keys for pre-commit
+        uses: webfactory/ssh-agent@v0.7.0
+        with:
+            ssh-private-key: |
+              ${{ secrets.SSH_PRIVATE_KEY_PRIVATE_GO_MODULE }}
+
+      - name: Setup SSH Keys
+        run: |
+          echo "${{ secrets.SSH_PRIVATE_KEY_PRIVATE_GO_MODULE }}" > ~/.ssh/id_rsa
+
+
+      - name: Install Dependencies
+        run: |
+          sudo apt update
+          sudo apt install wireguard
+          sudo apt install resolvconf
+          sudo apt install openjdk-17-jre
+          wget https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-6.0.0.4432-linux.zip
+          sudo unzip -d /opt sonar-scanner-cli-6.0.0.4432-linux.zip
+          sudo mv /opt/sonar-scanner-6.0.0.4432-linux /opt/sonar-scanner
+
+      # TODO(boilerplate): replace `<your-org>` with your private Go module org/host to exclude it from depcheck.
+      - name: Exclude Private Module
+        run: sed -i '/<your-org>/d' go.mod
+
+      - name: Dependency Check
+        uses: dependency-check/Dependency-Check_Action@main
+        id: Depcheck
+        with:
+          project: '${{ github.event.repository.name }}'
+          path: '.'
+          format: 'HTML'
+          args: >
+            --enableRetired
+            --enableExperimental
+            --disableCentral
+
+      - name: Establish VPN
+        run: |
+          echo '${{ secrets.WIREGUARD_CONFIG }}' | sudo tee /etc/wireguard/wg0.conf
+          sudo wg-quick up wg0
+
+#      - name: Sonar Analysis
+#        run: |
+#              /opt/sonar-scanner/bin/sonar-scanner \
+#              -Dsonar.host.url=${{ secrets.SONAR_HOST_URL }} \
+#              -Dsonar.token=${{ secrets.SONAR_TOKEN }} \
+#              -Dsonar.projectKey=${{ github.event.repository.name }} \
+#              -Dsonar.projectName=${{ github.event.repository.name }} \
+#              -Dsonar.qualitygate.wait=true
+
+      - name: Archive Security Results
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-report
+          path: |
+            cover.out
+            ./reports/dependency-check-report.html

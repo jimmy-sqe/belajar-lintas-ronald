@@ -1,0 +1,470 @@
+# .boilerplate.yaml — machine-readable contract for the SDLC plugin
+#
+# This file declares all modular axes and their options. The plugin reads
+# this manifest to drive pruning: for each axis, the user/plugin selects
+# one or more options; everything else is removed by deleting marked
+# blocks in wiring files plus the corresponding adapter folders.
+#
+# Multiplicities:
+#   exactly_one  — must select exactly one option (a noop/none option
+#                  represents the explicit "off" choice)
+#   one_or_more  — select at least min options; combinations allowed
+#
+# Marker syntax in wiring files (.env.example, Makefile,
+# internal/app/container.go, internal/config/config.go, cmd/migrate.go):
+#
+#   <comment-marker> boilerplate:axis=X option=Y START
+#   ... block content ...
+#   <comment-marker> boilerplate:axis=X option=Y END
+
+version: 1
+source_tag: v1.0.0
+name: backend-belajar-lintas-ronald
+description: Greenfield Go service boilerplate (hexagonal, multi-adapter)
+subproject: backend
+folder: backend
+
+axes:
+  persistence:
+    multiplicity: one_or_more
+    min: 1
+    integration_mode: wired
+    options:
+      postgres:
+        path: internal/adapter/persistence/postgres
+        migrations_path: db/migrations/postgres
+        seeds_path: db/seeds/postgres
+        extra_paths:
+          - cmd/seed_postgres_test.go
+        compose_services: [postgres]
+        env_vars: [POSTGRES_HOST, POSTGRES_PORT, POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB, POSTGRES_SSLMODE]
+        go_imports:
+          - github.com/jmoiron/sqlx
+          - github.com/lib/pq
+          - github.com/Masterminds/squirrel
+      mysql:
+        path: internal/adapter/persistence/mysql
+        migrations_path: db/migrations/mysql
+        seeds_path: db/seeds/mysql
+        extra_paths:
+          - cmd/seed_mysql_test.go
+        compose_services: [mysql]
+        env_vars: [MYSQL_HOST, MYSQL_PORT, MYSQL_USER, MYSQL_PASSWORD, MYSQL_DB]
+        go_imports:
+          - github.com/jmoiron/sqlx
+          - github.com/go-sql-driver/mysql
+          - github.com/Masterminds/squirrel
+      mongodb:
+        path: internal/adapter/persistence/mongodb
+        migrations_path: null
+        seeds_path: db/seeds/mongodb
+        extra_paths:
+          - cmd/seed_mongo_test.go
+        compose_services: [mongodb]
+        env_vars: [MONGODB_URI, MONGODB_DB]
+        go_imports:
+          - go.mongodb.org/mongo-driver
+      noop:
+        path: internal/adapter/persistence/noop
+        migrations_path: null
+        seeds_path: null
+        extra_paths: []
+        compose_services: []
+        env_vars: []
+        go_imports: []
+
+  cache:
+    multiplicity: exactly_one
+    integration_mode: wired
+    options:
+      redis:
+        path: internal/adapter/cache/redis
+        extra_paths:
+          - internal/adapter/session/redis    # session store coupled to redis client
+        compose_services: [redis]
+        env_vars: [REDIS_HOST, REDIS_PORT, REDIS_PASSWORD, REDIS_DB]
+        go_imports:
+          - github.com/go-redis/redis/v8
+      inmemory:
+        path: internal/adapter/cache/inmemory
+        compose_services: []
+        env_vars: []
+        go_imports: []
+      noop:
+        path: internal/adapter/cache/noop
+        compose_services: []
+        env_vars: []
+        go_imports: []
+
+  auth:
+    multiplicity: exactly_one
+    integration_mode: wired
+    options:
+      jwt:
+        path: internal/adapter/auth/jwt
+        extra_paths:
+          - internal/adapter/token/jwt       # JWT token issuer (signer side)
+        compose_services: []
+        env_vars: [JWT_SECRET, JWT_ISSUER, JWT_AUDIENCE]
+        go_imports:
+          - github.com/golang-jwt/jwt/v4
+      apikey:
+        path: internal/adapter/auth/apikey
+        compose_services: []
+        env_vars: [API_KEY_HEADER, API_KEYS]
+        go_imports: []
+      oauth2-oidc:
+        path: internal/adapter/auth/oauth2-oidc
+        compose_services: []
+        env_vars: [OIDC_ISSUER_URL, OIDC_CLIENT_ID, OIDC_AUDIENCE]
+        go_imports:
+          - github.com/coreos/go-oidc/v3
+          - golang.org/x/oauth2
+      none:
+        path: internal/adapter/auth/none
+        compose_services: []
+        env_vars: []
+        go_imports: []
+
+  observability:
+    multiplicity: exactly_one
+    integration_mode: wired
+    env_vars: [OBSERVABILITY_BACKEND]
+    options:
+      otel:
+        path: internal/adapter/observability/otel
+        compose_services: []
+        env_vars: [OTEL_EXPORTER_OTLP_ENDPOINT, OTEL_SERVICE_NAME, OTEL_EXPORTER_OTLP_INSECURE]
+        # Repoint the runtime selector default away from the pruned noop arm.
+        # Without this, a service pruned to otel boots into newObservability's
+        # default branch ("unknown OBSERVABILITY_BACKEND \"noop\"").
+        codemods:
+          - { file: internal/config/config.go, pattern: 'getString(v, "OBSERVABILITY_BACKEND", "noop")', replacement: 'getString(v, "OBSERVABILITY_BACKEND", "otel")', when_selected: true }
+          - { file: env/env.example, pattern: "OBSERVABILITY_BACKEND=noop", replacement: "OBSERVABILITY_BACKEND=otel", when_selected: true }
+        go_imports:
+          - go.opentelemetry.io/otel
+          - go.opentelemetry.io/otel/sdk
+          - go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp
+      datadog:
+        path: internal/adapter/observability/datadog
+        compose_services: []
+        env_vars: [DD_AGENT_HOST, DD_TRACE_AGENT_PORT, DD_SERVICE, DD_ENV, DD_TRACE_ENABLED]
+        codemods:
+          - { file: internal/config/config.go, pattern: 'getString(v, "OBSERVABILITY_BACKEND", "noop")', replacement: 'getString(v, "OBSERVABILITY_BACKEND", "datadog")', when_selected: true }
+          - { file: env/env.example, pattern: "OBSERVABILITY_BACKEND=noop", replacement: "OBSERVABILITY_BACKEND=datadog", when_selected: true }
+        go_imports:
+          - gopkg.in/DataDog/dd-trace-go.v1
+      noop:
+        path: internal/adapter/observability/noop
+        compose_services: []
+        env_vars: []
+        go_imports: []
+
+  messaging:
+    multiplicity: one_or_more
+    min: 1
+    integration_mode: standalone
+    options:
+      gcp-pubsub:
+        path: internal/adapter/messaging/gcp-pubsub
+        compose_services: []
+        env_vars: [GCP_PROJECT_ID, PUBSUB_TOPIC]
+        go_imports:
+          - cloud.google.com/go/pubsub
+      rabbitmq:
+        path: internal/adapter/messaging/rabbitmq
+        compose_services: [rabbitmq]
+        env_vars: [RABBITMQ_URL]
+        go_imports:
+          - github.com/rabbitmq/amqp091-go
+      redis-streams:
+        path: internal/adapter/messaging/redis-streams
+        compose_services: [redis]   # shared with cache.redis
+        env_vars: [REDIS_HOST, REDIS_PORT, REDIS_PASSWORD]
+        go_imports:
+          - github.com/go-redis/redis/v8
+      aws-sqs:
+        path: internal/adapter/messaging/aws-sqs
+        compose_services: []
+        env_vars: [AWS_REGION, SQS_QUEUE_URL]
+        go_imports:
+          - github.com/aws/aws-sdk-go-v2/config
+          - github.com/aws/aws-sdk-go-v2/service/sqs
+      aws-sns:
+        path: internal/adapter/messaging/aws-sns
+        compose_services: []
+        env_vars: [AWS_REGION, SNS_TOPIC_ARN]
+        go_imports:
+          - github.com/aws/aws-sdk-go-v2/config
+          - github.com/aws/aws-sdk-go-v2/service/sns
+      noop:
+        path: internal/adapter/messaging/noop
+        compose_services: []
+        env_vars: []
+        go_imports: []
+
+  storage:
+    multiplicity: one_or_more
+    min: 1
+    integration_mode: wired
+    options:
+      gcs:
+        path: internal/adapter/storage/gcs
+        compose_services: []
+        env_vars: [GCS_BUCKET]
+        go_imports:
+          - cloud.google.com/go/storage
+      s3:
+        path: internal/adapter/storage/s3
+        compose_services: []
+        env_vars: [AWS_REGION, S3_BUCKET]
+        go_imports:
+          - github.com/aws/aws-sdk-go-v2/config
+          - github.com/aws/aws-sdk-go-v2/service/s3
+      minio:
+        path: internal/adapter/storage/minio
+        compose_services: [minio]
+        env_vars: [MINIO_ENDPOINT, MINIO_ACCESS_KEY, MINIO_SECRET_KEY, MINIO_BUCKET, MINIO_USE_SSL]
+        go_imports:
+          - github.com/minio/minio-go/v7
+      local:
+        path: internal/adapter/storage/local
+        compose_services: []
+        env_vars: [LOCAL_STORAGE_PATH]
+        go_imports: []
+      noop:
+        path: internal/adapter/storage/noop
+        compose_services: []
+        env_vars: []
+        go_imports: []
+
+  # secrets: 'env' option is implicitly wired via config.Load (reads env vars
+  # directly); the gcp/aws/vault options are standalone — wire manually in
+  # container.go when adopting an external secret manager.
+  secrets:
+    multiplicity: one_or_more
+    min: 1
+    integration_mode: wired
+    options:
+      env:
+        path: internal/adapter/secrets/env
+        compose_services: []
+        env_vars: [APP_ENV]
+        go_imports: []
+      gcp:
+        path: internal/adapter/secrets/gcp
+        compose_services: []
+        env_vars: [GCP_PROJECT_ID]
+        go_imports:
+          - cloud.google.com/go/secretmanager
+      aws:
+        path: internal/adapter/secrets/aws
+        compose_services: []
+        env_vars: [AWS_REGION]
+        go_imports:
+          - github.com/aws/aws-sdk-go-v2/config
+          - github.com/aws/aws-sdk-go-v2/service/secretsmanager
+      vault:
+        path: internal/adapter/secrets/vault
+        compose_services: []
+        env_vars: [VAULT_ADDR, VAULT_TOKEN, VAULT_KV_PATH]
+        go_imports:
+          - github.com/hashicorp/vault/api
+
+  notification:
+    multiplicity: exactly_one
+    integration_mode: standalone
+    options:
+      smtp:
+        path: internal/adapter/notification/smtp
+        compose_services: []
+        env_vars: [SMTP_HOST, SMTP_PORT, SMTP_USERNAME, SMTP_PASSWORD, SMTP_FROM]
+        go_imports: []   # uses stdlib net/smtp
+      sendgrid:
+        path: internal/adapter/notification/sendgrid
+        compose_services: []
+        env_vars: [SENDGRID_API_KEY, SENDGRID_FROM]
+        go_imports:
+          - github.com/sendgrid/sendgrid-go
+      noop:
+        path: internal/adapter/notification/noop
+        compose_services: []
+        env_vars: []
+        go_imports: []
+
+  api-doc:
+    multiplicity: exactly_one
+    integration_mode: meta
+    options:
+      swag:
+        path: internal/http/apidoc/swag
+        compose_services: []
+        env_vars: []
+        go_imports: []
+        makefile_targets: [swag-gen]
+      oapi-codegen:
+        path: internal/http/apidoc/openapi
+        compose_services: []
+        env_vars: []
+        go_imports: []
+        makefile_targets: [oapi-gen]
+      none:
+        path: null
+        compose_services: []
+        env_vars: []
+        go_imports: []
+
+  jobs:
+    multiplicity: exactly_one
+    integration_mode: standalone
+    options:
+      cron:
+        path: internal/adapter/jobs/cron
+        compose_services: []
+        env_vars: []
+        go_imports:
+          - github.com/robfig/cron/v3
+      worker:
+        path: internal/adapter/jobs/worker
+        compose_services: []
+        env_vars: []
+        go_imports: []
+      noop:
+        path: internal/adapter/jobs/noop
+        compose_services: []
+        env_vars: []
+        go_imports: []
+
+  container:
+    multiplicity: one_or_more
+    min: 1
+    integration_mode: meta
+    options:
+      dockerfile:
+        files: [Dockerfile, .dockerignore]
+        compose_services: []
+        env_vars: []
+      nginx:
+        files: [nginx.conf]
+        compose_services: [nginx]
+        env_vars: []
+
+  # Sample/demo applications. Set selection to 'none' when scaffolding
+  # a real product to prune the demo code entirely.
+  sample-app:
+    multiplicity: one_or_more
+    min: 0
+    integration_mode: meta
+    options:
+      todo-app:
+        path: internal/domain/todo
+        extra_paths:
+          # Inbound HTTP layer
+          - internal/http/handler/todo_handler.go
+          - internal/http/handler/todo_handler_test.go
+          - internal/http/handler/dto/todo_dto.go
+          # Persistence per dialect (cross-cutting with persistence axis)
+          - internal/adapter/persistence/postgres/todo_repo.go
+          - internal/adapter/persistence/postgres/todo_repo_test.go
+          - internal/adapter/persistence/mysql/todo_repo.go
+          - internal/adapter/persistence/mysql/todo_repo_test.go
+          - internal/adapter/persistence/mongodb/todo_repo.go
+          - internal/adapter/persistence/mongodb/todo_repo_test.go
+          # Cache per option (cross-cutting with cache axis)
+          - internal/adapter/cache/redis/todo_cache.go
+          - internal/adapter/cache/inmemory/todo_cache.go
+          - internal/adapter/cache/inmemory/todo_cache_test.go
+          - internal/adapter/cache/noop/todo_cache.go
+          # App-layer factories (only needed when todo-app is present)
+          - internal/app/persistence.go
+          - internal/app/persistence_test.go
+          - internal/app/cache.go
+          - internal/app/cache_test.go
+          # Migrations per dialect
+          - db/migrations/postgres/002_create_todos.up.sql
+          - db/migrations/mysql/002_create_todos.up.sql
+          - db/migrations/mongodb/002_create_todos.go
+          # Seeds per dialect
+          - db/seeds/postgres/002_todos.sql
+          - db/seeds/mysql/002_todos.sql
+          - db/seeds/mongodb/002_todos.json
+        compose_services: []
+        env_vars: []
+        go_imports: []
+
+  inference:
+    multiplicity: exactly_one
+    integration_mode: wired
+    options:
+      noop:
+        path: internal/adapter/inference/noop
+        compose_services: []
+        env_vars: [INFERENCE_BACKEND]
+        go_imports: []
+      onnxruntime:
+        path: internal/adapter/inference/onnxruntime
+        compose_services: []
+        env_vars: [INFERENCE_BACKEND, INFERENCE_MODEL_DIR]
+        # Real binding (github.com/yalue/onnxruntime_go) is added by the
+        # product via `go get` per docs/ML_INFERENCE_PATTERN.md; the shipped
+        # adapter is a compile-clean stub, so no go_imports are declared here.
+        go_imports: []
+
+  rpc:
+    multiplicity: exactly_one
+    integration_mode: wired
+    options:
+      none:
+        path: null
+        compose_services: []
+        env_vars: []
+        go_imports: []
+      grpc:
+        path: internal/adapter/rpc/grpc
+        extra_paths:
+          - proto
+          - gen
+          - buf.yaml
+          - buf.gen.yaml
+        compose_services: []
+        env_vars: [GRPC_HOST, GRPC_PORT]
+        go_imports:
+          - google.golang.org/grpc
+          - google.golang.org/protobuf
+
+# Files that always exist regardless of selection.
+core_files:
+  - main.go
+  - cmd/**
+  - internal/domain/**
+  - internal/http/**
+  - internal/config/**
+  - internal/app/**
+  - pkg/**
+  - Makefile
+  - go.mod
+  - go.sum
+  - .tool-versions
+  - .github/**
+  - docs/**
+  - .gitignore
+  - .golangci.yaml
+  - .gitleaks.toml
+  - .pre-commit-config.yaml
+  - sonar-project.properties
+
+# Files that contain axis markers and must be edited (not deleted) during prune.
+wiring_files:
+  - internal/app/container.go
+  - internal/app/server.go
+  - internal/app/observability.go
+  - internal/app/storage.go
+  - internal/app/persistence.go
+  - internal/app/cache.go
+  - internal/app/inference.go
+  - internal/config/config.go
+  - internal/http/router.go
+  - cmd/migrate.go
+  - cmd/seed.go
+  - env/env.example
+  - Makefile

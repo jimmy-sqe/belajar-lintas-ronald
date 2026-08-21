@@ -1,0 +1,93 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: db-migrate-{{ .Values.pr.sha | trunc 7 }}
+  namespace: {{ include "preview.namespace" . }}
+  labels:
+    {{- include "preview.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "0"
+    "helm.sh/hook-delete-policy": before-hook-creation
+spec:
+  backoffLimit: 3
+  template:
+    spec:
+      restartPolicy: OnFailure
+      nodeSelector:
+        {{- toYaml .Values.nodeSelector | nindent 8 }}
+      tolerations:
+        {{- toYaml .Values.tolerations | nindent 8 }}
+      {{- if or .Values.postgresql.enabled .Values.mongodb.enabled .Values.mysql.enabled }}
+      initContainers:
+        {{- if .Values.postgresql.enabled }}
+        - name: wait-for-postgresql
+          image: busybox:1.36
+          command: ['sh', '-c', 'until nc -z postgresql {{ .Values.postgresql.port }}; do echo "waiting for postgresql..."; sleep 2; done']
+        {{- end }}
+        {{- if .Values.mongodb.enabled }}
+        - name: wait-for-mongodb
+          image: busybox:1.36
+          command: ['sh', '-c', 'until nc -z mongodb {{ .Values.mongodb.port }}; do echo "waiting for mongodb..."; sleep 2; done']
+        {{- end }}
+        {{- if .Values.mysql.enabled }}
+        - name: wait-for-mysql
+          image: busybox:1.36
+          command: ['sh', '-c', 'until nc -z mysql {{ .Values.mysql.port }}; do echo "waiting for mysql..."; sleep 2; done']
+        {{- end }}
+      {{- end }}
+      containers:
+        - name: migrate
+          image: {{ include "preview.backendImage" . }}
+          imagePullPolicy: Always
+          command: {{ toJson .Values.migration.command }}
+          envFrom:
+            - secretRef:
+                name: postgresql-credentials
+            {{- if .Values.mongodb.enabled }}
+            - secretRef:
+                name: mongodb-credentials
+            {{- end }}
+            {{- if .Values.mysql.enabled }}
+            - secretRef:
+                name: mysql-credentials
+            {{- end }}
+{{- if .Values.runSeed }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: db-seed-{{ .Values.pr.sha | trunc 7 }}
+  namespace: {{ include "preview.namespace" . }}
+  labels:
+    {{- include "preview.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "1"
+    "helm.sh/hook-delete-policy": before-hook-creation
+spec:
+  backoffLimit: 3
+  template:
+    spec:
+      restartPolicy: OnFailure
+      nodeSelector:
+        {{- toYaml .Values.nodeSelector | nindent 8 }}
+      tolerations:
+        {{- toYaml .Values.tolerations | nindent 8 }}
+      containers:
+        - name: seed
+          image: {{ include "preview.backendImage" . }}
+          imagePullPolicy: Always
+          command: {{ toJson .Values.seed.command }}
+          envFrom:
+            - secretRef:
+                name: postgresql-credentials
+            {{- if .Values.mongodb.enabled }}
+            - secretRef:
+                name: mongodb-credentials
+            {{- end }}
+            {{- if .Values.mysql.enabled }}
+            - secretRef:
+                name: mysql-credentials
+            {{- end }}
+{{- end }}

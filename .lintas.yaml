@@ -1,0 +1,18 @@
+version: 1
+product: belajar-lintas-ronald
+services:
+  - name: backend
+    folder: backend
+    stack: go
+    role: backend
+    protocol: rest
+    exposes_contract: true
+    fe_facing: true
+  - name: frontend
+    folder: frontend
+    stack: nextjs
+    role: frontend
+    exposes_contract: false
+    fe_facing: false
+    consumes:
+      - backend

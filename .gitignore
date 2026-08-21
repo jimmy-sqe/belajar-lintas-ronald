@@ -1,0 +1,45 @@
+# Monorepo-wide rules. Language-specific .gitignore files live in
+# each language subfolder (e.g., backend/.gitignore).
+
+# Editor & IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS metadata
+.DS_Store
+.AppleDouble
+.LSOverride
+Thumbs.db
+desktop.ini
+
+# Local env files (committed: env.example)
+.env
+.env.local
+.env.*.local
+
+# Temp / cache
+tmp/
+.cache/
+
+# Secrets / credentials (top-level — language adapters may have their own)
+*.pem
+!*.example.pem
+*.key
+!*.example.key
+*.p12
+*.pfx
+credentials.json
+service-account*.json
+!service-account.example.json
+
+# Superpowers brainstorm session artifacts
+.superpowers/
+docs/superpowers/
+
+# Ralph loop session state (local tooling, not part of the template)
+.claude/ralph-loop.local.md
+
+# Per-developer Claude Code settings (not shared)
+.claude/settings.local.json

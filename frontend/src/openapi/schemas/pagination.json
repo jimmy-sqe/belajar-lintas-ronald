@@ -1,0 +1,11 @@
+{
+  "type": "object",
+  "required": ["page", "page_size", "total_data", "total_page"],
+  "properties": {
+    "page": { "type": "integer", "minimum": 1, "example": 1 },
+    "page_size": { "type": "integer", "minimum": 1, "example": 10 },
+    "total_data": { "type": "integer", "minimum": 0, "example": 5 },
+    "total_page": { "type": "integer", "minimum": 0, "example": 1 }
+  },
+  "x-readme-ref-name": "Pagination"
+}

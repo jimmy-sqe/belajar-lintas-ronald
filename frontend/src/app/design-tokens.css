@@ -1,0 +1,166 @@
+/* ============================================================
+   Horizon Design System — Foundation Tokens
+   Source: sqeui-framework/packages/horizon (Sinarmas)
+   Tailwind prefix: hz-  •  Font: Inter  •  Default theme: blue
+   ============================================================ */
+
+/* ----- Color ramps (token.json) ----- */
+:root {
+  /* blue */
+  --hz-blue-50:#E6F0FD; --hz-blue-100:#C2DCFA; --hz-blue-200:#91C0F6;
+  --hz-blue-300:#5AA0F2; --hz-blue-400:#2E86EF; --hz-blue-500:#006CEB;
+  --hz-blue-600:#005CC8; --hz-blue-700:#004DA7; --hz-blue-800:#003E86;
+  --hz-blue-900:#00316A; --hz-blue-950:#00234D;
+
+  /* green */
+  --hz-green-50:#CBF5E6; --hz-green-100:#8AE5C5; --hz-green-200:#42DBA6;
+  --hz-green-300:#21C48B; --hz-green-400:#1AB07C; --hz-green-500:#159367;
+  --hz-green-600:#107853; --hz-green-700:#0F6B4B; --hz-green-800:#0C573D;
+  --hz-green-900:#154232; --hz-green-950:#0F2E23;
+
+  /* magenta */
+  --hz-magenta-50:#FFD4F8; --hz-magenta-100:#FEAAED; --hz-magenta-200:#FC83DE;
+  --hz-magenta-300:#F863CF; --hz-magenta-400:#F14AC0; --hz-magenta-500:#E437AE;
+  --hz-magenta-600:#C32690; --hz-magenta-700:#9B1C72; --hz-magenta-800:#731353;
+  --hz-magenta-900:#4D0C37; --hz-magenta-950:#26061B;
+
+  /* neutral (0–1000) */
+  --hz-neutral-0:#FFFFFF; --hz-neutral-50:#F9FAFC; --hz-neutral-100:#EDF0F5;
+  --hz-neutral-200:#D5DBE5; --hz-neutral-300:#BAC3D1; --hz-neutral-400:#A4AEBD;
+  --hz-neutral-500:#8490A1; --hz-neutral-600:#677485; --hz-neutral-700:#505D6E;
+  --hz-neutral-800:#3B4552; --hz-neutral-900:#29313B; --hz-neutral-950:#1E252E;
+  --hz-neutral-1000:#13171C;
+
+  /* orange */
+  --hz-orange-50:#FFD9CC; --hz-orange-100:#FEB69C; --hz-orange-200:#FC976E;
+  --hz-orange-300:#F87E49; --hz-orange-400:#F16A2C; --hz-orange-500:#E45A18;
+  --hz-orange-600:#C3470A; --hz-orange-700:#9B3705; --hz-orange-800:#732802;
+  --hz-orange-900:#4D1A01; --hz-orange-950:#260D00;
+
+  /* purple */
+  --hz-purple-50:#E5D9FF; --hz-purple-100:#D0B9FE; --hz-purple-200:#B795FC;
+  --hz-purple-300:#A277F8; --hz-purple-400:#9160F1; --hz-purple-500:#7C48E4;
+  --hz-purple-600:#6536C3; --hz-purple-700:#4F299B; --hz-purple-800:#3A1D73;
+  --hz-purple-900:#26134D; --hz-purple-950:#130926;
+
+  /* red */
+  --hz-red-50:#FFD9D9; --hz-red-100:#FAA6A6; --hz-red-200:#F57878;
+  --hz-red-300:#EC5151; --hz-red-400:#E53535; --hz-red-500:#D92222;
+  --hz-red-600:#BA1313; --hz-red-700:#940D0D; --hz-red-800:#6F0707;
+  --hz-red-900:#4A0404; --hz-red-950:#260202;
+
+  /* teal */
+  --hz-teal-50:#DBF3FF; --hz-teal-100:#AEE4FE; --hz-teal-200:#82D3FC;
+  --hz-teal-300:#62C7F8; --hz-teal-400:#3FB6F1; --hz-teal-500:#2CA7E4;
+  --hz-teal-600:#1C8CC3; --hz-teal-700:#146E9B; --hz-teal-800:#0D5173;
+  --hz-teal-900:#08364D; --hz-teal-950:#041B26;
+
+  /* yellow */
+  --hz-yellow-50:#FFFEDE; --hz-yellow-100:#FCE397; --hz-yellow-200:#FFD966;
+  --hz-yellow-300:#FFCC33; --hz-yellow-400:#FFBF00; --hz-yellow-500:#E5AC00;
+  --hz-yellow-600:#CC9900; --hz-yellow-700:#B28600; --hz-yellow-800:#997300;
+  --hz-yellow-900:#664C00; --hz-yellow-950:#332600;
+}
+
+/* ----- Primary palette (theme-scoped).
+   One of nine ramps is bound to --hz-horizon-primary-*.
+   Default = blue (matches theme.css).                        ----- */
+:root {
+  --hz-horizon-primary:        #006CEB;
+  --hz-horizon-primary-dark:   #004DA7;
+  --hz-horizon-primary-medium: #005CC8;
+  --hz-horizon-primary-light:  #5AA0F2;
+  --hz-horizon-primary-soft:   #91C0F6;
+  --hz-horizon-primary-pale:   #E6F0FD;
+}
+.theme-hz-green   { --hz-horizon-primary:#159367;--hz-horizon-primary-dark:#0F6B4B;--hz-horizon-primary-medium:#107853;--hz-horizon-primary-light:#21C48B;--hz-horizon-primary-soft:#42DBA6;--hz-horizon-primary-pale:#CBF5E6; }
+.theme-hz-magenta { --hz-horizon-primary:#E437AE;--hz-horizon-primary-dark:#9B1C72;--hz-horizon-primary-medium:#C32690;--hz-horizon-primary-light:#F863CF;--hz-horizon-primary-soft:#FC83DE;--hz-horizon-primary-pale:#FFD4F8; }
+.theme-hz-neutral { --hz-horizon-primary:#8490A1;--hz-horizon-primary-dark:#505D6E;--hz-horizon-primary-medium:#677485;--hz-horizon-primary-light:#BAC3D1;--hz-horizon-primary-soft:#D5DBE5;--hz-horizon-primary-pale:#F9FAFC; }
+.theme-hz-orange  { --hz-horizon-primary:#E45A18;--hz-horizon-primary-dark:#9B3705;--hz-horizon-primary-medium:#C3470A;--hz-horizon-primary-light:#F87E49;--hz-horizon-primary-soft:#FC976E;--hz-horizon-primary-pale:#FFD9CC; }
+.theme-hz-purple  { --hz-horizon-primary:#7C48E4;--hz-horizon-primary-dark:#4F299B;--hz-horizon-primary-medium:#6536C3;--hz-horizon-primary-light:#A277F8;--hz-horizon-primary-soft:#B795FC;--hz-horizon-primary-pale:#E5D9FF; }
+.theme-hz-red     { --hz-horizon-primary:#D92222;--hz-horizon-primary-dark:#940D0D;--hz-horizon-primary-medium:#BA1313;--hz-horizon-primary-light:#EC5151;--hz-horizon-primary-soft:#F57878;--hz-horizon-primary-pale:#FFD9D9; }
+.theme-hz-teal    { --hz-horizon-primary:#2CA7E4;--hz-horizon-primary-dark:#146E9B;--hz-horizon-primary-medium:#1C8CC3;--hz-horizon-primary-light:#62C7F8;--hz-horizon-primary-soft:#82D3FC;--hz-horizon-primary-pale:#DBF3FF; }
+.theme-hz-yellow  { --hz-horizon-primary:#E5AC00;--hz-horizon-primary-dark:#B28600;--hz-horizon-primary-medium:#CC9900;--hz-horizon-primary-light:#FFCC33;--hz-horizon-primary-soft:#FFD966;--hz-horizon-primary-pale:#FFEFBF; }
+
+/* ----- Typography (source: foundation/typography.ts) -----
+   Scale uses rem; 1rem = 16px.                                  */
+:root {
+  --hz-font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+
+  /* body-s  12 / 16 */
+  --hz-text-body-s-size: .75rem;   --hz-text-body-s-lh: 1rem;     --hz-text-body-s-ls: 0em;
+  /* body-r  14 / 20 */
+  --hz-text-body-r-size: .875rem;  --hz-text-body-r-lh: 1.25rem;  --hz-text-body-r-ls: 0em;
+  /* body-l  16 / 24 */
+  --hz-text-body-l-size: 1rem;     --hz-text-body-l-lh: 1.5rem;   --hz-text-body-l-ls: 0em;
+  /* body-xl 18 / 26 */
+  --hz-text-body-xl-size: 1.125rem;--hz-text-body-xl-lh: 1.625rem;--hz-text-body-xl-ls: 0em;
+
+  /* headings */
+  --hz-text-h1-size: 2.25rem; --hz-text-h1-lh: 2.75rem;   --hz-text-h1-ls:-0.02em;
+  --hz-text-h2-size: 2rem;    --hz-text-h2-lh: 2.5rem;    --hz-text-h2-ls:-0.01em;
+  --hz-text-h3-size: 1.75rem; --hz-text-h3-lh: 2.125rem;  --hz-text-h3-ls:-0.01em;
+  --hz-text-h4-size: 1.5rem;  --hz-text-h4-lh: 1.75rem;   --hz-text-h4-ls:-0.01em;
+  --hz-text-h5-size: 1.25rem; --hz-text-h5-lh: 1.5rem;    --hz-text-h5-ls:-0.01em;
+  --hz-text-h6-size: 1.125rem;--hz-text-h6-lh: 1.375rem;  --hz-text-h6-ls:-0.01em;
+
+  /* weights */
+  --hz-fw-regular: 400;
+  --hz-fw-semibold: 600;
+  --hz-fw-bold: 700;
+}
+
+/* ----- Spacing (Tailwind default 4px scale) ----- */
+:root {
+  --hz-space-0: 0;
+  --hz-space-1: .25rem;   /* 4 */
+  --hz-space-2: .5rem;    /* 8 */
+  --hz-space-3: .75rem;   /* 12 */
+  --hz-space-4: 1rem;     /* 16 */
+  --hz-space-5: 1.25rem;  /* 20 */
+  --hz-space-6: 1.5rem;   /* 24 */
+  --hz-space-8: 2rem;     /* 32 */
+  --hz-space-10: 2.5rem;  /* 40 */
+  --hz-space-12: 3rem;    /* 48 */
+  --hz-space-16: 4rem;    /* 64 */
+}
+
+/* ----- Radius (from component styles: rounded-md .375, lg .5, full) ----- */
+:root {
+  --hz-radius-sm: .25rem;   /* rounded      */
+  --hz-radius-md: .375rem;  /* rounded-md   */
+  --hz-radius-lg: .5rem;    /* rounded-lg (primary — buttons, cards, chips) */
+  --hz-radius-xl: .75rem;
+  --hz-radius-full: 9999px;
+}
+
+/* ----- Component heights (from button.classnames.ts) ----- */
+:root {
+  --hz-size-sm: 2rem;   /* 32 */
+  --hz-size-md: 2.5rem; /* 40 */
+  --hz-size-lg: 3rem;   /* 48 */
+}
+
+/* ----- Shadow (Tailwind defaults used by card) ----- */
+:root {
+  --hz-shadow-sm: 0 1px 2px 0 rgb(0 0 0 / .05);
+  --hz-shadow-md: 0 4px 6px -1px rgb(0 0 0 / .10), 0 2px 4px -2px rgb(0 0 0 / .10);
+  --hz-shadow-lg: 0 10px 15px -3px rgb(0 0 0 / .10), 0 4px 6px -4px rgb(0 0 0 / .10);
+  --hz-shadow-xl: 0 20px 25px -5px rgb(0 0 0 / .10), 0 8px 10px -6px rgb(0 0 0 / .10);
+  --hz-shadow-focus: 0 0 0 2px var(--hz-horizon-primary-light);
+}
+
+/* ----- Surface roles ----- */
+:root {
+  --hz-surface-page:    var(--hz-neutral-50);
+  --hz-surface-card:    var(--hz-neutral-0);
+  --hz-surface-subtle:  var(--hz-neutral-100);
+  --hz-border-subtle:   var(--hz-neutral-200);
+  --hz-border-default:  var(--hz-neutral-300);
+  --hz-border-strong:   var(--hz-neutral-500);
+  --hz-text-primary:    var(--hz-neutral-950);
+  --hz-text-secondary:  var(--hz-neutral-700);
+  --hz-text-tertiary:   var(--hz-neutral-500);
+  --hz-text-disabled:   var(--hz-neutral-400);
+  --hz-text-inverse:    var(--hz-neutral-0);
+}

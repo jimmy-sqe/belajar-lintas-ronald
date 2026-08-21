@@ -1,0 +1,134 @@
+pr:
+  number: ""   # set via --set pr.number=<PR_NUMBER>
+  sha: ""      # set via --set pr.sha=<COMMIT_SHA>
+
+repoName: "boilerplate-monorepo"  # set via --set repoName=<REPO_NAME>
+
+domain: preview.squantumengine.com
+
+# Full registry path prefix, e.g.:
+# asia-southeast1-docker.pkg.dev/my-project/boilerplate-monorepo
+registry: "REGISTRY_PLACEHOLDER"
+
+frontend:
+  image:
+    pullPolicy: Always
+  replicaCount: 1
+  port: 3000
+  health:
+    path: /
+  service:
+    port: 3000
+  resources:
+    requests:
+      cpu: 10m
+      memory: 64Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  extraEnv:
+    - name: PORT
+      value: "3000"
+    - name: HOSTNAME
+      value: "0.0.0.0"
+
+backend:
+  image:
+    pullPolicy: Always
+  replicaCount: 1
+  command: []  # override Dockerfile CMD, e.g. ["/app", "serve"]. Empty = use image default.
+  port: 8080
+  health:
+    path: /healthz
+  service:
+    port: 8080
+  resources:
+    requests:
+      cpu: 10m
+      memory: 64Mi
+    limits:
+      cpu: 500m
+      memory: 1024Mi
+  extraEnv:
+    - name: HTTP_PORT
+      value: "8080"
+
+postgresql:
+  enabled: true
+  image: postgres:16-alpine
+  host: postgresql  # override when enabled: false to point at external DB
+  port: 5432
+  storage: 1Gi
+  database: preview_db
+  username: preview_user
+  password: ""  # required when enabled: true — set via --set postgresql.password=<VALUE>
+  resources:
+    requests:
+      cpu: 10m
+      memory: 64Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+redis:
+  enabled: true
+  image: redis:7-alpine
+  port: 6379
+  password: "previewredispass"
+  resources:
+    requests:
+      cpu: 10m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+  extraEnv:
+    - name: REDIS_HOST
+      value: "redis"
+    - name: REDIS_PORT
+      value: "6379"
+    - name: REDIS_PASSWORD
+      value: "previewredispass"
+
+# --- Optional services (disabled by default) ---
+# To enable, set <service>.enabled: true and override credentials.
+# All other fields have defaults in templates — only set what you need to change.
+# e.g.:
+#   mongodb:
+#     enabled: true
+#     password: mypassword
+
+mongodb:
+  enabled: false
+
+mysql:
+  enabled: false
+
+minio:
+  enabled: true
+
+rabbitmq:
+  enabled: false
+
+migration:
+  command: ["/backend", "db:migrate"]
+
+seed:
+  command: ["/backend", "db:seed"]
+
+runSeed: true
+
+nodeSelector:
+  node_pool: sqe-non-production-standard
+
+tolerations:
+  - key: standard
+    operator: Equal
+    value: present
+    effect: NoSchedule
+
+traefik:
+  entryPoints:
+    - web
+    - websecure
+  tls: true

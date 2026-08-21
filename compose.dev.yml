@@ -1,0 +1,18 @@
+# Dev-only Compose overrides — loaded ONLY by the Tiltfile via
+# docker_compose(['compose.yml', 'compose.dev.yml']). Deliberately NOT named
+# compose.override.yml so plain `docker compose up` (prod-shaped) is unaffected;
+# Tilt opts in explicitly.
+#
+# compose.yml stays production-shaped. This file flips only what local
+# hot-reload needs on top of the Dockerfile `dev` stages.
+services:
+  # boilerplate:subproject=nextjs START
+  frontend-belajar-lintas-ronald:
+    environment:
+      # `next dev` (Tilt dev stage) expects development. compose.yml sets
+      # NODE_ENV=production for the prod `runner` stage, which otherwise leaks
+      # into the dev container and triggers Next.js's "non-standard NODE_ENV"
+      # warning. Merged per-key over compose.yml's environment block.
+      NODE_ENV: development
+      NEXT_PUBLIC_BACKEND_URL: http://backend-belajar-lintas-ronald:8000
+  # boilerplate:subproject=nextjs END

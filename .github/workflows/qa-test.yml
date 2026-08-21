@@ -1,0 +1,26 @@
+name: qa-test
+on:
+  pull_request:
+    paths: ["qa-test/**"]
+  push:
+    branches: [main]
+    paths: ["qa-test/**"]
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: qa-test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: qa-test/pyproject.toml
+      - run: pip install -e ".[dev]"
+      - run: playwright install --with-deps chromium
+      - run: pytest -m "belajar_lintas_ronald and smoke"
+        if: github.event_name == 'pull_request'
+      - run: pytest -m "belajar_lintas_ronald"
+        if: github.event_name == 'push'

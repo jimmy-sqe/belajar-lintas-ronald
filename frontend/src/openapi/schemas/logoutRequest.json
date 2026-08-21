@@ -1,0 +1,5 @@
+{
+  "type": "object",
+  "properties": { "refresh_token": { "type": "string" } },
+  "x-readme-ref-name": "LogoutRequest"
+}

@@ -1,0 +1,39 @@
+name: CI - Preview Environment
+
+on:
+  workflow_dispatch:
+    inputs:
+
+jobs:
+  pre-preview-deployment:
+    name: Pre-Preview Environment Deployment
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - id: metadata
+        # TODO(boilerplate): wire to your org's metadata-extraction action.
+        uses: <your-org>/<your-actions-repo>/extract-metadata@main
+
+      # TODO(boilerplate): wire to your org's preview-environment action and env repo.
+      - name: Run Reusable Preview Environment
+        uses: <your-org>/<your-actions-repo>/reusable-pre-preview-env@main
+        with:
+          slack_bot_token: ${{ secrets.SLACK_BOT_TOKEN }}
+          google_login_secret: ${{ secrets.STAGING_GAR_JSON_KEY }}
+          dockerfile: Dockerfile
+          docker_build_args: |
+            ssh_prv_key=${{ secrets.SSH_PRIVATE_KEY_PRIVATE_GO_MODULE_ENCODED }}
+          image_url: asia-southeast2-docker.pkg.dev/<your-gcp-project>/<your-registry>/preview/backend-belajar-lintas-ronald:${{ steps.metadata.outputs.short_sha }}
+          source_repository: ${{ github.repository }}
+          branch_name: ${{ steps.metadata.outputs.branch }}
+          branch_name_url: ${{ github.server_url }}/${{ github.repository }}/tree/${{ steps.metadata.outputs.branch }}
+          env_repository: <your-org>/<your-env-repo>
+          env_repository_ssh_key: ${{ secrets.SSH_PRIVATE_KEY_ENV_REPO }}
+          env_repository_clone_path: <your-env-repo>
+          env_repository_branch: main
+          env_repository_tag_path: helmfile.d/backend-belajar-lintas-ronald/.tag_preview
+          author_name: ${{ steps.metadata.outputs.author_name }}
+          author_email: ${{ steps.metadata.outputs.author_email }}
+          short_sha: ${{ steps.metadata.outputs.short_sha }}

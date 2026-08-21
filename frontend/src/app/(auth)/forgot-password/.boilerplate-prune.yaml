@@ -1,0 +1,7 @@
+# Sub-folder prune directive read by the SDLC plugin at scaffold time.
+# The plugin removes this entire folder unless ALL of the following hold.
+keep_if:
+  axis_selections:
+    auth: jwt-refresh
+    sample-app:
+      contains: auth-flow

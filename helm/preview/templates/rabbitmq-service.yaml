@@ -1,0 +1,17 @@
+{{- if .Values.rabbitmq.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: rabbitmq
+  namespace: {{ include "preview.namespace" . }}
+spec:
+  selector:
+    app: rabbitmq
+  ports:
+    - name: amqp
+      port: {{ .Values.rabbitmq.port | default 5672 }}
+      targetPort: {{ .Values.rabbitmq.port | default 5672 }}
+    - name: management
+      port: {{ .Values.rabbitmq.managementPort | default 15672 }}
+      targetPort: {{ .Values.rabbitmq.managementPort | default 15672 }}
+{{- end }}

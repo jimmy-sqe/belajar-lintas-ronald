@@ -1,0 +1,169 @@
+version: 2
+
+# Options for analysis running.
+run:
+  # The default concurrency value is the number of available CPU.
+  concurrency: 4
+
+issues:
+  # Which dirs to skip: issues from them won't be reported.
+  # In v2 this moved from run.skip-dirs to issues.exclude-dirs.
+  exclude-dirs:
+    - mocks
+
+linters:
+  # Enable specific linter
+  # https://golangci-lint.run/usage/linters/#enabled-by-default
+  enable:
+    - errcheck
+    - gocritic
+    - gosec
+    - govet
+    - ineffassign
+    - revive
+    - staticcheck
+    - testableexamples
+    - unconvert
+    - unparam
+    - unused
+    - usestdlibvars
+    - whitespace
+    - bodyclose
+    - sqlclosecheck
+    - depguard
+  settings:
+    revive:
+      rules:
+        - name: exported
+          disabled: true
+    staticcheck:
+      checks:
+        - '-SA1000'
+    usetesting:
+      os-setenv: true
+    depguard:
+      rules:
+        domain-no-infra:
+          list-mode: lax
+          files:
+            - "**/internal/domain/**/*.go"
+          deny:
+            - pkg: "backend-belajar-lintas-ronald/internal/adapter"
+              desc: "domain must not import infrastructure adapters"
+            - pkg: "backend-belajar-lintas-ronald/internal/http"
+              desc: "domain must not import HTTP layer"
+            - pkg: "backend-belajar-lintas-ronald/internal/app"
+              desc: "domain must not import app wiring"
+        # Each adapter port (auth, cache, messaging, notification,
+        # persistence, secrets, storage, jobs) is scoped to its own subtree.
+        # Files within a port may import the port-root interface package and
+        # any of its own sibling sub-packages (e.g. mongodb -> mongodb/entity);
+        # they may not import a *different* port's tree.
+        adapter-auth-no-cross:
+          list-mode: lax
+          files:
+            - "**/internal/adapter/auth/**/*.go"
+          deny:
+            - pkg: "backend-belajar-lintas-ronald/internal/adapter/cache"
+            - pkg: "backend-belajar-lintas-ronald/internal/adapter/jobs"
+            - pkg: "backend-belajar-lintas-ronald/internal/adapter/messaging"
+            - pkg: "backend-belajar-lintas-ronald/internal/adapter/notification"
+            - pkg: "backend-belajar-lintas-ronald/internal/adapter/persistence"
+            - pkg: "backend-belajar-lintas-ronald/internal/adapter/secrets"
+            - pkg: "backend-belajar-lintas-ronald/internal/adapter/storage"
+        adapter-cache-no-cross:
+          list-mode: lax
+          files:
+            - "**/internal/adapter/cache/**/*.go"
+          deny:
+            - pkg: "backend-belajar-lintas-ronald/internal/adapter/auth"
+            - pkg: "backend-belajar-lintas-ronald/internal/adapter/jobs"
+            - pkg: "backend-belajar-lintas-ronald/internal/adapter/messaging"
+            - pkg: "backend-belajar-lintas-ronald/internal/adapter/notification"
+            - pkg: "backend-belajar-lintas-ronald/internal/adapter/persistence"
+            - pkg: "backend-belajar-lintas-ronald/internal/adapter/secrets"
+            - pkg: "backend-belajar-lintas-ronald/internal/adapter/storage"
+        adapter-jobs-no-cross:
+          list-mode: lax
+          files:
+            - "**/internal/adapter/jobs/**/*.go"
+          deny:
+            - pkg: "backend-belajar-lintas-ronald/internal/adapter/auth"
+            - pkg: "backend-belajar-lintas-ronald/internal/adapter/cache"
+            - pkg: "backend-belajar-lintas-ronald/internal/adapter/messaging"
+            - pkg: "backend-belajar-lintas-ronald/internal/adapter/notification"
+            - pkg: "backend-belajar-lintas-ronald/internal/adapter/persistence"
+            - pkg: "backend-belajar-lintas-ronald/internal/adapter/secrets"
+            - pkg: "backend-belajar-lintas-ronald/internal/adapter/storage"
+        adapter-messaging-no-cross:
+          list-mode: lax
+          files:
+            - "**/internal/adapter/messaging/**/*.go"
+          deny:
+            - pkg: "backend-belajar-lintas-ronald/internal/adapter/auth"
+            - pkg: "backend-belajar-lintas-ronald/internal/adapter/cache"
+            - pkg: "backend-belajar-lintas-ronald/internal/adapter/jobs"
+            - pkg: "backend-belajar-lintas-ronald/internal/adapter/notification"
+            - pkg: "backend-belajar-lintas-ronald/internal/adapter/persistence"
+            - pkg: "backend-belajar-lintas-ronald/internal/adapter/secrets"
+            - pkg: "backend-belajar-lintas-ronald/internal/adapter/storage"
+        adapter-notification-no-cross:
+          list-mode: lax
+          files:
+            - "**/internal/adapter/notification/**/*.go"
+          deny:
+            - pkg: "backend-belajar-lintas-ronald/internal/adapter/auth"
+            - pkg: "backend-belajar-lintas-ronald/internal/adapter/cache"
+            - pkg: "backend-belajar-lintas-ronald/internal/adapter/jobs"
+            - pkg: "backend-belajar-lintas-ronald/internal/adapter/messaging"
+            - pkg: "backend-belajar-lintas-ronald/internal/adapter/persistence"
+            - pkg: "backend-belajar-lintas-ronald/internal/adapter/secrets"
+            - pkg: "backend-belajar-lintas-ronald/internal/adapter/storage"
+        adapter-persistence-no-cross:
+          list-mode: lax
+          files:
+            - "**/internal/adapter/persistence/**/*.go"
+          deny:
+            - pkg: "backend-belajar-lintas-ronald/internal/adapter/auth"
+            - pkg: "backend-belajar-lintas-ronald/internal/adapter/cache"
+            - pkg: "backend-belajar-lintas-ronald/internal/adapter/jobs"
+            - pkg: "backend-belajar-lintas-ronald/internal/adapter/messaging"
+            - pkg: "backend-belajar-lintas-ronald/internal/adapter/notification"
+            - pkg: "backend-belajar-lintas-ronald/internal/adapter/secrets"
+            - pkg: "backend-belajar-lintas-ronald/internal/adapter/storage"
+        adapter-secrets-no-cross:
+          list-mode: lax
+          files:
+            - "**/internal/adapter/secrets/**/*.go"
+          deny:
+            - pkg: "backend-belajar-lintas-ronald/internal/adapter/auth"
+            - pkg: "backend-belajar-lintas-ronald/internal/adapter/cache"
+            - pkg: "backend-belajar-lintas-ronald/internal/adapter/jobs"
+            - pkg: "backend-belajar-lintas-ronald/internal/adapter/messaging"
+            - pkg: "backend-belajar-lintas-ronald/internal/adapter/notification"
+            - pkg: "backend-belajar-lintas-ronald/internal/adapter/persistence"
+            - pkg: "backend-belajar-lintas-ronald/internal/adapter/storage"
+        adapter-storage-no-cross:
+          list-mode: lax
+          files:
+            - "**/internal/adapter/storage/**/*.go"
+          deny:
+            - pkg: "backend-belajar-lintas-ronald/internal/adapter/auth"
+            - pkg: "backend-belajar-lintas-ronald/internal/adapter/cache"
+            - pkg: "backend-belajar-lintas-ronald/internal/adapter/jobs"
+            - pkg: "backend-belajar-lintas-ronald/internal/adapter/messaging"
+            - pkg: "backend-belajar-lintas-ronald/internal/adapter/notification"
+            - pkg: "backend-belajar-lintas-ronald/internal/adapter/persistence"
+            - pkg: "backend-belajar-lintas-ronald/internal/adapter/secrets"
+        http-no-adapter:
+          list-mode: lax
+          files:
+            - "**/internal/http/**/*.go"
+          deny:
+            - pkg: "backend-belajar-lintas-ronald/internal/adapter"
+              desc: "HTTP handlers must use domain interfaces, not adapters directly"
+
+formatters:
+  enable:
+    - gofmt
+    - goimports

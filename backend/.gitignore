@@ -1,0 +1,24 @@
+# Go-specific ignores for the golang/ subtree.
+
+# Build artifacts
+*.exe
+*.dll
+*.so
+*.dylib
+bin/
+dist/
+backend-belajar-lintas-ronald
+sqeid-api
+
+# Test / coverage artifacts
+*.test
+cover.out
+coverage.html
+
+# Generated mocks (when using `go generate` patterns)
+**/mocks/
+
+# IDE-generated branch-name marker files that some tools drop
+feature
+update
+refactor

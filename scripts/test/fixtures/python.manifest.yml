@@ -1,0 +1,86 @@
+version: 1
+name: template-be-python
+axes:
+  persistence:
+    multiplicity: one_or_more
+    options:
+      postgres: {}
+      mysql: {}
+      mongodb: {}
+  cache:
+    multiplicity: exactly_one
+    options:
+      redis: {}
+      inmemory: {}
+      noop: {}
+  auth:
+    multiplicity: exactly_one
+    options:
+      none: {}
+      jwt: {}
+      apikey: {}
+      oauth2-oidc: {}
+  storage:
+    multiplicity: one_or_more
+    options:
+      local: {}
+      noop: {}
+      s3: {}
+      minio: {}
+      gcs: {}
+  messaging:
+    multiplicity: one_or_more
+    options:
+      noop: {}
+      redis-streams: {}
+      rabbitmq: {}
+      gcp-pubsub: {}
+      aws-sqs: {}
+      aws-sns: {}
+  notification:
+    multiplicity: exactly_one
+    options:
+      noop: {}
+      smtp: {}
+      sendgrid: {}
+  secrets:
+    multiplicity: one_or_more
+    options:
+      env: {}
+      gcp: {}
+      aws: {}
+      vault: {}
+  observability:
+    multiplicity: exactly_one
+    options:
+      noop: {}
+      otel: {}
+      datadog: {}
+  inference:
+    multiplicity: exactly_one
+    options:
+      onnxruntime: {}
+      torch: {}
+      tensorflow: {}
+      noop: {}
+  api-doc:
+    multiplicity: exactly_one
+    options:
+      native: {}
+      none: {}
+  jobs:
+    multiplicity: exactly_one
+    options:
+      noop: {}
+      cron: {}
+      worker: {}
+  container:
+    multiplicity: one_or_more
+    options:
+      dockerfile: {}
+      nginx: {}
+  sample-app:
+    multiplicity: one_or_more
+    min: 0
+    options:
+      todo-app: {}

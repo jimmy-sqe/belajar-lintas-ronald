@@ -1,0 +1,33 @@
+# Dependabot config for the monorepo.
+# Add entries per language subproject as they are added.
+
+version: 2
+updates:
+  # Go modules under golang/
+  - package-ecosystem: "gomod"
+    directory: "/golang"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 0
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+
+  # npm packages under nextjs/
+  - package-ecosystem: "npm"
+    directory: "/nextjs"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 0
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "chore(ci)"
+      include: "scope"

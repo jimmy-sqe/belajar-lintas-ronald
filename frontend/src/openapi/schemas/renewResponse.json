@@ -1,0 +1,9 @@
+{
+  "type": "object",
+  "properties": {
+    "access_token": { "type": "string" },
+    "access_token_expires_in_sec": { "type": "integer" },
+    "issued_at": { "type": "integer" }
+  },
+  "x-readme-ref-name": "RenewResponse"
+}

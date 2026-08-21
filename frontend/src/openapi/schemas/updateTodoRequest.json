@@ -1,0 +1,9 @@
+{
+  "type": "object",
+  "properties": {
+    "title": { "type": "string", "minLength": 1, "maxLength": 200 },
+    "description": { "type": "string", "maxLength": 2000 },
+    "due_date": { "type": "string", "format": "date-time" }
+  },
+  "x-readme-ref-name": "UpdateTodoRequest"
+}

@@ -1,0 +1,55 @@
+{{- if .Values.rabbitmq.enabled }}
+{{- $port           := .Values.rabbitmq.port           | default 5672 }}
+{{- $managementPort := .Values.rabbitmq.managementPort | default 15672 }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rabbitmq
+  namespace: {{ include "preview.namespace" . }}
+  labels:
+    {{- include "preview.labels" . | nindent 4 }}
+    app: rabbitmq
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rabbitmq
+  template:
+    metadata:
+      labels:
+        app: rabbitmq
+    spec:
+      nodeSelector:
+        {{- toYaml .Values.nodeSelector | nindent 8 }}
+      tolerations:
+        {{- toYaml .Values.tolerations | nindent 8 }}
+      containers:
+        - name: rabbitmq
+          image: {{ .Values.rabbitmq.image | default "rabbitmq:3.13-management-alpine" }}
+          ports:
+            - name: amqp
+              containerPort: {{ $port }}
+            - name: management
+              containerPort: {{ $managementPort }}
+          env:
+            - name: RABBITMQ_DEFAULT_USER
+              value: {{ .Values.rabbitmq.username | default "rabbit" | quote }}
+            - name: RABBITMQ_DEFAULT_PASS
+              value: {{ .Values.rabbitmq.password | default "rabbit" | quote }}
+          readinessProbe:
+            exec:
+              command: ["rabbitmq-diagnostics", "ping"]
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          resources:
+            {{- if .Values.rabbitmq.resources }}
+            {{- toYaml .Values.rabbitmq.resources | nindent 12 }}
+            {{- else }}
+            requests:
+              cpu: 10m
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+            {{- end }}
+{{- end }}

@@ -1,0 +1,35 @@
+# Validates PR titles against Conventional Commits.
+# Backstop for squash-merge (PR title becomes commit message on main).
+name: PR Title Convention
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+jobs:
+  validate-title:
+    name: Validate PR title format
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    steps:
+      - uses: amannn/action-semantic-pull-request@v5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          types: |
+            feat
+            fix
+            docs
+            style
+            refactor
+            test
+            chore
+            perf
+            ci
+            build
+          requireScope: false
+          subjectPattern: ^.{1,72}$
+          subjectPatternError: |
+            PR title subject must be 1-72 characters (Conventional Commits convention).
+            See docs/CONTRIBUTING.md for the format.

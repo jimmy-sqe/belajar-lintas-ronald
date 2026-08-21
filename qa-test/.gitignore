@@ -1,0 +1,58 @@
+# Python
+*.pyc
+*.pyo
+__pycache__/
+*.pdb
+*.egg-info/
+.eggs/
+dist/
+build/
+*.whl
+*.log
+*.bak
+*.swp
+
+.vscode/
+.idea/
+
+# Virtual environment
+venv/
+ENV/
+env/
+.venv/
+*.env
+
+# Test results or generated files
+test_output/
+results/
+*.html
+*.xml
+testcase-result/
+
+# pytest-playwright output
+pytest-results/
+test-results/
+playwright-report/
+.pytest_cache/
+
+# Allure output
+allure-results/
+allure-report/
+
+# Coverage directory used by coverage.py
+.coverage
+.coverage.*
+
+node_modules/
+
+# Windows Thumbs.db
+Thumbs.db
+
+# macOS .DS_Store
+.DS_Store
+
+/.claude/settings.local.json
+/docs/
+/.mypy_cache/
+/.ruff_cache/
+/.playwright-mcp/

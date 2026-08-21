@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  namespace: {{ include "preview.namespace" . }}
+  labels:
+    {{- include "preview.labels" . | nindent 4 }}
+    app: frontend
+spec:
+  replicas: {{ .Values.frontend.replicaCount }}
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+    spec:
+      nodeSelector:
+        {{- toYaml .Values.nodeSelector | nindent 8 }}
+      tolerations:
+        {{- toYaml .Values.tolerations | nindent 8 }}
+      containers:
+        - name: frontend
+          image: {{ include "preview.frontendImage" . }}
+          imagePullPolicy: {{ .Values.frontend.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.frontend.port }}
+          env:
+            - name: API_URL
+              value: "http://backend:{{ .Values.backend.service.port }}"
+            {{- toYaml .Values.frontend.extraEnv | nindent 12 }}
+            {{- if .Values.minio.enabled }}
+            {{- if .Values.minio.frontendExtraEnv }}
+            {{- toYaml .Values.minio.frontendExtraEnv | nindent 12 }}
+            {{- else }}
+            - name: MINIO_ENDPOINT
+              value: {{ printf "http://minio:%d" (int (.Values.minio.port | default 9000)) | quote }}
+            - name: MINIO_ROOT_USER
+              value: {{ .Values.minio.rootUser | default "minioadmin" | quote }}
+            - name: MINIO_ROOT_PASSWORD
+              value: {{ .Values.minio.rootPassword | default "minioadmin" | quote }}
+            {{- end }}
+            {{- end }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.frontend.health.path }}
+              port: {{ .Values.frontend.port }}
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.frontend.health.path }}
+              port: {{ .Values.frontend.port }}
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.frontend.resources | nindent 12 }}

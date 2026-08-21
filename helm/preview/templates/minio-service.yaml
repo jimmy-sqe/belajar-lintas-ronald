@@ -1,0 +1,17 @@
+{{- if .Values.minio.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: minio
+  namespace: {{ include "preview.namespace" . }}
+spec:
+  selector:
+    app: minio
+  ports:
+    - name: api
+      port: {{ .Values.minio.port | default 9000 }}
+      targetPort: {{ .Values.minio.port | default 9000 }}
+    - name: console
+      port: {{ .Values.minio.consolePort | default 9001 }}
+      targetPort: {{ .Values.minio.consolePort | default 9001 }}
+{{- end }}

@@ -1,0 +1,272 @@
+# .boilerplate.yaml — machine-readable contract for the SDLC plugin
+# Mirrors golang/.boilerplate.yaml in structure. FE axes are differently
+# shaped: many are "preset"-style (swap deps + providers) rather than
+# folder-prune-style.
+#
+# Plugin behavior:
+# - For folder-pruned axes (mocking): delete the option's path + remove
+#   marker blocks in wiring files.
+# - For preset-style axes (state, ui-library, etc.): manipulate
+#   package.json deps + apply codemods to layout.tsx providers.
+#   Boilerplate ships with the "default" option already wired.
+
+version: 1
+source_tag: v1.0.0
+name: frontend-belajar-lintas-ronald
+description: Greenfield Next.js boilerplate (App Router, React 19, Horizon UI, Kubb)
+subproject: frontend
+folder: frontend
+
+# Defaults shipped in the boilerplate. Plugin can swap to other options.
+defaults:
+  rendering: csr
+  auth: jwt-refresh
+  api-client: kubb
+  state: zustand
+  forms: react-hook-form
+  validation: zod
+  styling: [tailwind]
+  ui-library: horizon
+  mocking: msw
+  observability: noop
+
+axes:
+  rendering:
+    multiplicity: exactly_one
+    description: SSR vs CSR mode. Switches auth storage + middleware behaviour.
+    options:
+      ssr:
+        env_vars: [NEXT_PUBLIC_RENDERING_MODE, AUTH_COOKIE_SECRET]
+        description: httpOnly encrypted cookies; refresh-token rotation in middleware.
+      csr:
+        env_vars: [NEXT_PUBLIC_RENDERING_MODE, NEXT_PUBLIC_ENCRYPTION_KEY]
+        description: Encrypted localStorage; refresh handled by axios interceptor.
+
+  auth:
+    multiplicity: exactly_one
+    description: Authentication paradigm. Each option ships a self-contained adapter under src/services/auth/<option>/.
+    options:
+      jwt-refresh:
+        path: src/services/auth/jwt-refresh
+        extra_paths:
+          - src/mocks/auth/jwt-refresh    # MSW handlers per auth option
+        env_vars: [NEXT_PUBLIC_ENABLE_REFRESH_TOKEN]
+        description: Default. JWT access + refresh token; client decodes expiry; auto-refresh queue.
+      opaque-session:
+        path: src/services/auth/opaque-session
+        extra_paths:
+          - src/mocks/auth/opaque-session
+        env_vars: []
+        description: Server-side opaque session token (bearer header); no client-side expiry decode; 401 -> re-login.
+      oauth2-oidc:
+        path: src/services/auth/oauth2-oidc
+        env_vars: [NEXT_PUBLIC_OIDC_ISSUER_URL, NEXT_PUBLIC_OIDC_CLIENT_ID]
+        description: TODO. Not implemented in v1.0.0.
+      none:
+        path: src/services/auth/none
+        env_vars: []
+        description: Public app. Stubs throw "auth disabled".
+
+  sample-app:
+    multiplicity: one_or_more
+    min: 0
+    description: Opinionated sample pages for learning/demo. Independent of auth axis except where flagged.
+    options:
+      auth-flow:
+        path: src/app/(auth)
+        env_vars: []
+        description: Login / change-password / forgot-password (the last is jwt-refresh-only). Requires auth != none.
+      todo-app:
+        path: src/app/(protected)/todos
+        # Additional folders pruner removes when todo-app is unselected.
+        # mocks/todos: MSW handlers for /v1/todos; referenced by
+        #              src/mocks/handlers.ts via marker-wrapped import.
+        extra_paths:
+          - src/mocks/todos
+        # File-level codemod points: replace literal value when option unselected.
+        codemods:
+          - file: src/static/route.ts
+            pattern: "defaultBaseUrlPage = '/todos'"
+            replacement: "defaultBaseUrlPage = '/'"
+            when_unselected: true
+        env_vars: []
+        description: TodoApp sample CRUD pages (list + detail + create/edit/delete modals). Requires auth != none.
+
+  api-client:
+    multiplicity: exactly_one
+    description: How the typed API client is generated/written.
+    options:
+      kubb:
+        path: src/openapi
+        extra_paths:
+          - kubb.config.ts
+          - scripts/download-schema.ts
+          - scripts/patch-kubb.ts
+        description: Default. Spec-first via OpenAPI → types/zod/React Query hooks.
+      orval:
+        path: null
+        description: TODO. Alternate spec-first codegen. Not implemented in v1.0.0.
+      hand-written:
+        path: null
+        description: Manual axios + zod schemas. Not implemented in v1.0.0.
+
+  state:
+    multiplicity: exactly_one
+    description: Client state library.
+    options:
+      zustand:
+        path: src/store
+        npm_deps: [zustand]
+        description: Default. Small store under src/store/.
+      jotai:
+        path: null
+        npm_deps: [jotai]
+        description: TODO. Atom-based. Not implemented in v1.0.0.
+      redux-toolkit:
+        path: null
+        npm_deps: ["@reduxjs/toolkit", react-redux]
+        description: TODO. Heavier; for complex state needs. Not implemented in v1.0.0.
+      none:
+        path: null
+        description: React state only. Remove src/store/.
+
+  forms:
+    multiplicity: exactly_one
+    options:
+      react-hook-form:
+        npm_deps: [react-hook-form, "@hookform/resolvers"]
+        description: Default. Used in (auth) pages.
+      none:
+        description: Plain controlled inputs.
+
+  validation:
+    multiplicity: exactly_one
+    options:
+      zod:
+        path: src/utils/zod.ts
+        npm_deps: [zod]
+        description: Default. Used by Kubb output and react-hook-form resolver.
+      yup:
+        npm_deps: [yup, "@hookform/resolvers"]
+        description: TODO. Not implemented in v1.0.0.
+      none:
+        description: No runtime validation.
+
+  styling:
+    multiplicity: one_or_more
+    min: 1
+    options:
+      tailwind:
+        extra_paths:
+          - tailwind.config.ts
+          - postcss.config.mjs
+        npm_deps: [tailwindcss, postcss, autoprefixer]
+        description: Default. Layout/spacing.
+      css-modules:
+        description: Built-in to Next.js; no extra config.
+      scss:
+        npm_deps: [sass]
+        description: Already in package.json; opt-in via *.scss files.
+
+  ui-library:
+    multiplicity: exactly_one
+    description: Component library.
+    options:
+      horizon:
+        npm_deps: ["@squantumengine/horizon"]
+        description: Default. Internal SQE library. CLAUDE.md mandates it as the sole UI library.
+      shadcn:
+        description: TODO. Open-source component generator. Not implemented in v1.0.0.
+      mui:
+        description: TODO. Material UI. Not implemented in v1.0.0.
+      custom:
+        description: Roll your own.
+
+  mocking:
+    multiplicity: exactly_one
+    options:
+      msw:
+        path: src/mocks
+        extra_paths:
+          - src/utils/msw
+        npm_deps: [msw, "@mswjs/source"]
+        env_vars: [NEXT_PUBLIC_API_MOCKING]
+        codemods:
+          # When mocking ≠ msw, MSWProvider is gone (import marker stripped);
+          # replace JSX wrapper with React Fragment so layout.tsx still compiles.
+          - file: src/app/layout.tsx
+            pattern: '<MSWProvider>'
+            replacement: '<>'
+            when_unselected: true
+          - file: src/app/layout.tsx
+            pattern: '</MSWProvider>'
+            replacement: '</>'
+            when_unselected: true
+        description: Default. Mock Service Worker for dev/test.
+      none:
+        path: null
+        description: Hit the real backend always.
+
+  observability:
+    multiplicity: exactly_one
+    description: Telemetry backend. Folder-per-option under src/services/observability/<option>/; barrels repointed at scaffold time.
+    options:
+      aws-rum:
+        path: src/services/observability/aws-rum
+        npm_deps: [aws-rum-web]
+        env_vars: [NEXT_PUBLIC_RUM_APP_ID, NEXT_PUBLIC_RUM_REGION, NEXT_PUBLIC_RUM_IDENTITY_POOL_ID, NEXT_PUBLIC_RUM_ENDPOINT]
+        codemods:
+          - { file: src/services/observability/index.ts,  pattern: "./noop/provider", replacement: "./aws-rum/provider", when_selected: true }
+          - { file: src/services/observability/server.ts, pattern: "./noop/register", replacement: "./aws-rum/register", when_selected: true }
+        description: AWS CloudWatch RUM (browser real-user monitoring).
+      sentry:
+        path: src/services/observability/sentry
+        npm_deps: ["@sentry/nextjs"]
+        env_vars: [NEXT_PUBLIC_SENTRY_DSN]
+        codemods:
+          - { file: src/services/observability/index.ts,  pattern: "./noop/provider", replacement: "./sentry/provider", when_selected: true }
+          - { file: src/services/observability/server.ts, pattern: "./noop/register", replacement: "./sentry/register", when_selected: true }
+        description: Sentry error + performance monitoring (client + server).
+      otel:
+        path: src/services/observability/otel
+        npm_deps: ["@vercel/otel"]
+        env_vars: [NEXT_PUBLIC_OTEL_SERVICE_NAME, OTEL_EXPORTER_OTLP_ENDPOINT]
+        codemods:
+          - { file: src/services/observability/index.ts,  pattern: "./noop/provider", replacement: "./otel/provider", when_selected: true }
+          - { file: src/services/observability/server.ts, pattern: "./noop/register", replacement: "./otel/register", when_selected: true }
+        description: OpenTelemetry server-side tracing via @vercel/otel.
+      noop:
+        path: src/services/observability/noop
+        npm_deps: []
+        env_vars: []
+        description: Default. No-op; barrels ship pointing here.
+
+# Files that always exist regardless of axis selection.
+core_files:
+  - package.json
+  - tsconfig.json
+  - next.config.mjs
+  - middleware.ts
+  - src/app/**
+  - src/components/**
+  - src/hooks/**
+  - src/services/**
+  - src/static/**
+  - src/utils/**
+  - src/config/**
+  - .env-example
+  - .gitignore
+  - .husky/**
+  - eslint.config.mjs
+  - src/services/observability/types.ts
+  - src/services/observability/index.ts
+  - src/services/observability/server.ts
+  - src/instrumentation.ts
+
+# Files that contain marker blocks (axis pruning operates here).
+wiring_files:
+  - src/app/layout.tsx        # ToasterProvider, MSWProvider, ReactQueryProvider, SessionProvider
+  - src/middleware.ts         # SSR refresh-token guard
+  - src/config/environment.ts # Env-driven feature flags
+  - .env-example              # env vars per axis
+  # package.json handled by stage_npm_deps (Stage G of PRUNING.md); not marker-wrapped.

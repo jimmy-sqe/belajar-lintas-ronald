@@ -1,0 +1,109 @@
+# .boilerplate.yaml — machine-readable contract for the SDLC plugin
+#
+# Declares all modular axes and their options. The monorepo pruner
+# (scripts/prune.sh) reads this manifest to drive pruning: for each axis the
+# scaffolder selects one option; unselected options' paths are deleted and
+# their marker blocks in wiring_files are stripped.
+#
+# Marker syntax in wiring files (Python/TOML/env use '#'):
+#   # boilerplate:axis=X option=Y START
+#   ... block content ...
+#   # boilerplate:axis=X option=Y END
+
+version: 1
+source_tag: v1.0.0
+name: qa-test-belajar_lintas_ronald
+description: Greenfield QA automation boilerplate (pytest + Playwright, UI + API)
+subproject: qa-test
+folder: qa-test
+
+axes:
+  sample-suite:
+    multiplicity: exactly_one
+    description: >-
+      The reference sample project. Ships one worked UI login suite
+      (belajar_lintas_ronald). Prune
+      to 'none' for a bare framework with no sample test.
+    options:
+      general-service:
+        path: pages/belajar_lintas_ronald
+        extra_paths:
+          - tests/belajar_lintas_ronald
+          - framework/api_clients/belajar_lintas_ronald.py
+        env_vars: []
+      none:
+        env_vars: []
+
+  api-testing:
+    multiplicity: exactly_one
+    integration_mode: wired
+    description: >-
+      Toggle the API automation layer (requests-based clients + faker
+      factories + their fixtures). 'wired' = UI + API together (default);
+      'none' = UI-only.
+    options:
+      wired:
+        path: framework/api_clients
+        extra_paths:
+          - framework/api.py
+          - framework/factories
+          - tests/fixtures/api.py
+          - tests/fixtures/factories.py
+        env_vars: []
+      none:
+        env_vars: []
+
+  reporting:
+    multiplicity: exactly_one
+    description: >-
+      pytest-html is the always-on baseline (unmarked). Selecting 'allure'
+      additionally keeps the allure-pytest dep, the --alluredir addopt, and the
+      Allure attach block in conftest.py. 'pytest-html' prunes those.
+    options:
+      allure:
+        env_vars: []
+      pytest-html:
+        env_vars: []
+
+  parallel-exec:
+    multiplicity: exactly_one
+    description: >-
+      Toggle pytest-xdist parallel execution (the dep + the commented -n
+      addopt). 'none' = serial only, lighter dependency set.
+    options:
+      xdist:
+        env_vars: []
+      none:
+        env_vars: []
+
+# Files that always exist regardless of selection.
+core_files:
+  - pyproject.toml
+  - requirements.txt
+  - .python-version
+  - .pre-commit-config.yaml
+  - .gitignore
+  - .env.example
+  - README.md
+  - CLAUDE.md
+  - framework/__init__.py
+  - framework/config.py
+  - framework/auth.py
+  - pages/__init__.py
+  - pages/base_page.py
+  - pages/base_login_page.py
+  - tests/conftest.py
+  - tests/fixtures/__init__.py
+  - tests/fixtures/browser.py
+  - tests/fixtures/auth.py
+
+# Files that contain axis markers and are edited (not deleted) during prune.
+wiring_files:
+  - pyproject.toml
+  - .env.example
+  - framework/config.py
+  - framework/auth.py
+  # api.py is also in api-testing=wired.extra_paths: deleted wholesale when
+  # api-testing=none; marker-stripped here when api-testing=wired + sample-suite=none.
+  - framework/api.py
+  - tests/conftest.py

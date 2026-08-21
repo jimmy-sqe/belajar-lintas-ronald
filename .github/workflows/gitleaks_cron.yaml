@@ -1,0 +1,79 @@
+name: gitleaks
+on:
+  schedule:
+    - cron: "0 17 * * *"
+  workflow_dispatch:
+  push:
+jobs:
+  scan:
+    name: gitleaks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          token: ${{ secrets.PAT_GITHUB_TOKEN }}
+      - uses: gitleaks/gitleaks-action@v2
+        with:
+          args: "--check --commit"
+        env:
+          GITHUB_TOKEN: ${{ secrets.PAT_GITHUB_TOKEN }}
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE}} # Only required for Organizations, not personal accounts.
+          GITLEAKS_CONFIG: .gitleaks.toml
+  check:
+    needs: [scan]
+    name: Notify Slack about Leaks founding
+    runs-on: ubuntu-latest
+    if: failure() # You can use the conditional checks to determine which notification to send.
+    steps:
+      - uses: wearerequired/slack-messaging-action@v2
+        with:
+          bot_token: ${{ secrets.SLACK_BOT_TOKEN }}
+          message_id: ${{ steps.slack.outputs.message_id }} # Updates existing message from the first step.
+          channel: gitleaks-alerts
+          payload: >-
+            {
+              "username": "Gitleaks",
+              "attachments": [
+                {
+                  "color": "#DDDDDD",
+                  "blocks": [
+                    {
+                      "type": "header",
+                      "text": {
+                        "type": "plain_text",
+                        "text": "Gitleaks Founding Leaks on code",
+                        "emoji": true
+                      }
+                    },
+                    {
+                      "type": "context",
+                      "elements": [
+                        {
+                          "type": "mrkdwn",
+                          "text": "*Repository:*\n${{ github.server_url }}/${{ github.repository }}"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "context",
+                      "elements": [
+                        {
+                          "type": "mrkdwn",
+                          "text": "*Workflow:*\n${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "context",
+                      "elements": [
+                        {
+                          "type": "mrkdwn",
+                          "text": "*Author :*\n${{ github.event.commits[0].author.name }}<${{ github.event.commits[0].author.email }}>\n"
+                        }
+                      ]
+                    }
+                  ] 
+                }
+              ]
+            }

@@ -1,0 +1,12 @@
+{
+  "type": "object",
+  "required": ["success", "code", "message", "timestamp"],
+  "properties": {
+    "success": { "type": "boolean", "example": false },
+    "code": { "type": "integer", "example": 40400, "description": "5-digit numeric error code" },
+    "message": { "type": "string" },
+    "timestamp": { "type": "string", "format": "date-time" },
+    "metadata": { "type": "object", "additionalProperties": true }
+  },
+  "x-readme-ref-name": "ErrorResponse"
+}

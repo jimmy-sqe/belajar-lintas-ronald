@@ -1,0 +1,98 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  namespace: {{ include "preview.namespace" . }}
+  labels:
+    {{- include "preview.labels" . | nindent 4 }}
+    app: backend
+spec:
+  replicas: {{ .Values.backend.replicaCount }}
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      nodeSelector:
+        {{- toYaml .Values.nodeSelector | nindent 8 }}
+      tolerations:
+        {{- toYaml .Values.tolerations | nindent 8 }}
+      containers:
+        - name: backend
+          image: {{ include "preview.backendImage" . }}
+          imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
+          {{- if .Values.backend.command }}
+          command: {{ toJson .Values.backend.command }}
+          {{- end }}
+          ports:
+            - containerPort: {{ .Values.backend.port }}
+          envFrom:
+            - secretRef:
+                name: postgresql-credentials
+            {{- if .Values.mongodb.enabled }}
+            - secretRef:
+                name: mongodb-credentials
+            {{- end }}
+            {{- if .Values.mysql.enabled }}
+            - secretRef:
+                name: mysql-credentials
+            {{- end }}
+          env:
+            - name: CORS_ALLOWED_ORIGINS
+              value: "https://{{ .Values.repoName }}-pr-{{ .Values.pr.number }}.{{ .Values.domain }}"
+            {{- toYaml .Values.backend.extraEnv | nindent 12 }}
+            {{- if .Values.redis.enabled }}
+            {{- if .Values.redis.extraEnv }}
+            {{- toYaml .Values.redis.extraEnv | nindent 12 }}
+            {{- else }}
+            - name: REDIS_HOST
+              value: "redis"
+            - name: REDIS_PORT
+              value: "6379"
+            - name: REDIS_PASSWORD
+              value: {{ .Values.redis.password | default "previewredispass" | quote }}
+            {{- end }}
+            {{- end }}
+            {{- if .Values.minio.enabled }}
+            {{- if .Values.minio.backendExtraEnv }}
+            {{- toYaml .Values.minio.backendExtraEnv | nindent 12 }}
+            {{- else }}
+            - name: MINIO_ENDPOINT
+              value: {{ printf "http://minio:%d" (int (.Values.minio.port | default 9000)) | quote }}
+            - name: MINIO_ROOT_USER
+              value: {{ .Values.minio.rootUser | default "minioadmin" | quote }}
+            - name: MINIO_ROOT_PASSWORD
+              value: {{ .Values.minio.rootPassword | default "minioadmin" | quote }}
+            {{- end }}
+            {{- end }}
+            {{- if .Values.rabbitmq.enabled }}
+            {{- if .Values.rabbitmq.extraEnv }}
+            {{- toYaml .Values.rabbitmq.extraEnv | nindent 12 }}
+            {{- else }}
+            - name: RABBITMQ_HOST
+              value: "rabbitmq"
+            - name: RABBITMQ_PORT
+              value: {{ .Values.rabbitmq.port | default 5672 | toString | quote }}
+            - name: RABBITMQ_USERNAME
+              value: {{ .Values.rabbitmq.username | default "rabbit" | quote }}
+            - name: RABBITMQ_PASSWORD
+              value: {{ .Values.rabbitmq.password | default "rabbit" | quote }}
+            {{- end }}
+            {{- end }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.backend.health.path }}
+              port: {{ .Values.backend.port }}
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.backend.health.path }}
+              port: {{ .Values.backend.port }}
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.backend.resources | nindent 12 }}

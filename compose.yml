@@ -1,0 +1,607 @@
+services:
+  # boilerplate:subproject=golang,python,java axis=persistence option=postgres START
+  postgres:
+    image: postgres:16-alpine
+    container_name: postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      # boilerplate:subproject=golang axis=persistence option=postgres START
+      POSTGRES_DB: template_be_go
+      # boilerplate:subproject=golang axis=persistence option=postgres END
+    ports:
+      - "5432:5432"
+    volumes:
+      # boilerplate:subproject=python axis=persistence option=postgres START
+      - ./python/db/init/create-python-db.sql:/docker-entrypoint-initdb.d/10-template-be-python.sql:ro
+      # boilerplate:subproject=python axis=persistence option=postgres END
+      # boilerplate:subproject=java axis=persistence option=postgres START
+      - ./java/data/postgres/init.sql:/docker-entrypoint-initdb.d/20-template-be-java.sql:ro
+      # boilerplate:subproject=java axis=persistence option=postgres END
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - app-network
+  # boilerplate:subproject=golang,python,java axis=persistence option=postgres END
+
+  # boilerplate:subproject=golang,java axis=persistence option=mysql START
+  mysql:
+    image: mysql:8.0
+    container_name: mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: mysql
+      # boilerplate:subproject=golang axis=persistence option=mysql START
+      MYSQL_DATABASE: template_be_go
+      # boilerplate:subproject=golang axis=persistence option=mysql END
+      MYSQL_USER: mysql
+      MYSQL_PASSWORD: mysql
+    ports:
+      - "3306:3306"
+    volumes:
+      # boilerplate:subproject=java axis=persistence option=mysql START
+      - ./java/data/mysql/init.sql:/docker-entrypoint-initdb.d/20-template-be-java.sql:ro
+      # boilerplate:subproject=java axis=persistence option=mysql END
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-pmysql"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - app-network
+  # boilerplate:subproject=golang,java axis=persistence option=mysql END
+
+  # boilerplate:subproject=golang,java axis=persistence option=mongodb START
+  mongodb:
+    image: mongo:7
+    container_name: mongodb
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: mongo
+      MONGO_INITDB_ROOT_PASSWORD: mongo
+    ports:
+      - "27017:27017"
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - app-network
+  # boilerplate:subproject=golang,java axis=persistence option=mongodb END
+
+  # boilerplate:subproject=golang,python axis=cache option=redis START
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    command: redis-server --requirepass redispass
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "redispass", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - app-network
+  # boilerplate:subproject=golang,python axis=cache option=redis END
+
+  # boilerplate:subproject=golang axis=messaging option=rabbitmq START
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: rabbit
+      RABBITMQ_DEFAULT_PASS: rabbit
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    networks:
+      - app-network
+  # boilerplate:subproject=golang axis=messaging option=rabbitmq END
+
+  # boilerplate:subproject=golang,nextjs axis=storage option=minio START
+  minio:
+    image: minio/minio:latest
+    container_name: minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    networks:
+      - app-network
+  # boilerplate:subproject=golang,nextjs axis=storage option=minio END
+
+  # boilerplate:subproject=golang START
+  # One-shot init container: applies golang-migrate Up() against the
+  # configured SQL dialect (postgres). Reuses the backend-belajar-lintas-ronald image
+  # with a command override (`backend-belajar-lintas-ronald db:migrate`). Compose runs
+  # this once on `docker compose up backend-belajar-lintas-ronald`, then waits for it
+  # to exit 0 before starting the seed step.
+  #
+  # NOTE: cmd/migrate.go currently hard-codes postgres. When mysql
+  # support lands there, broaden the axis marker below to include mysql.
+  # mongodb is schema-on-write — no migration runner.
+  # boilerplate:subproject=golang axis=persistence option=postgres START
+  backend-belajar-lintas-ronald-migrate:
+    image: backend-belajar-lintas-ronald
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: ["/backend", "db:migrate"]
+    environment:
+      APP_ENV: local
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: template_be_go
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+    networks:
+      - app-network
+  # boilerplate:subproject=golang axis=persistence option=postgres END
+
+  # One-shot init container: applies seed data after migrations land.
+  # Uses the same image with `backend-belajar-lintas-ronald db:seed`. cmd/seed.go is
+  # dialect-aware (axis markers per dialect) and skips any dialect whose
+  # connection env is empty.
+  #
+  # NOTE: only postgres is wired here. mysql/mongodb dialects need a
+  # corresponding migration runner before their seeds can apply
+  # (mysql: cmd/migrate.go extension; mongodb: schema-on-write so
+  # seed alone is enough but no demo seeds are bundled yet). When those
+  # land, broaden the env block + depends_on accordingly with marker
+  # wraps `axis=persistence option=mysql` / `option=mongodb`.
+  # boilerplate:subproject=golang axis=persistence option=postgres START
+  backend-belajar-lintas-ronald-seed:
+    image: backend-belajar-lintas-ronald
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: ["/backend", "db:seed"]
+    environment:
+      APP_ENV: local
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: template_be_go
+    depends_on:
+      backend-belajar-lintas-ronald-migrate:
+        condition: service_completed_successfully
+    restart: "no"
+    networks:
+      - app-network
+  # boilerplate:subproject=golang axis=persistence option=postgres END
+
+  backend-belajar-lintas-ronald:
+    image: backend-belajar-lintas-ronald
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      APP_ENV: local
+      HTTP_PORT: 8000
+      # boilerplate:subproject=golang axis=persistence option=postgres START
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: template_be_go
+      # boilerplate:subproject=golang axis=persistence option=postgres END
+      # boilerplate:subproject=golang axis=cache option=redis START
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: redispass
+      # boilerplate:subproject=golang axis=cache option=redis END
+      # boilerplate:subproject=golang axis=auth option=jwt START
+      JWT_SECRET: dev-only-secret-do-not-use-in-prod-32-chars
+      # Issuer + Audience claims not yet propagated by signer
+      # (adapter/token/jwt); blank values let verifier
+      # (adapter/auth/jwt) skip the check.
+      JWT_ISSUER: ""
+      JWT_AUDIENCE: ""
+      JWT_ACCESS_TTL_SEC: 3600
+      JWT_REFRESH_TTL_SEC: 86400
+      # boilerplate:subproject=golang axis=auth option=jwt END
+      # boilerplate:subproject=golang axis=rpc option=grpc START
+      GRPC_HOST: 0.0.0.0
+      GRPC_PORT: 50051
+      # boilerplate:subproject=golang axis=rpc option=grpc END
+      # boilerplate:subproject=golang axis=storage option=minio START
+      # Override the localhost endpoint baked into env/env.local so the
+      # container reaches the minio service over the compose network.
+      STORAGE_BACKEND: minio
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+      MINIO_BUCKET: dev-bucket
+      MINIO_USE_SSL: "false"
+      # boilerplate:subproject=golang axis=storage option=minio END
+    ports:
+      - "8000:8000"
+      # boilerplate:subproject=golang axis=rpc option=grpc START
+      - "50051:50051"
+      # boilerplate:subproject=golang axis=rpc option=grpc END
+    depends_on:
+      backend-belajar-lintas-ronald-seed:
+        condition: service_completed_successfully
+      # boilerplate:subproject=golang axis=cache option=redis START
+      redis:
+        condition: service_healthy
+      # boilerplate:subproject=golang axis=cache option=redis END
+      # boilerplate:subproject=golang axis=storage option=minio START
+      minio:
+        condition: service_healthy
+      # boilerplate:subproject=golang axis=storage option=minio END
+    # The final image is distroless (no shell/wget/curl), so the healthcheck
+    # runs the app binary's own `healthcheck` subcommand instead.
+    healthcheck:
+      test: ["CMD", "/backend", "healthcheck"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+    networks:
+      - app-network
+  # boilerplate:subproject=golang END
+
+  # boilerplate:subproject=python START
+  # One-shot init container: applies Alembic migrations (postgres) via the
+  # Typer CLI (`python -m app.cli migrate`). Reuses the template-be-python
+  # image. Compose runs this once, then waits for exit 0 before seeding.
+  # boilerplate:subproject=python axis=persistence option=postgres START
+  template-be-python-migrate:
+    image: template-be-python
+    build:
+      context: ./python
+      dockerfile: Dockerfile
+    command: ["uv", "run", "alembic", "upgrade", "head"]
+    environment:
+      APP_ENV: local
+      APP_POSTGRES_HOST: postgres
+      APP_POSTGRES_PORT: 5432
+      APP_POSTGRES_USER: postgres
+      APP_POSTGRES_PASSWORD: postgres
+      APP_POSTGRES_DB: template_be_python
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+    networks:
+      - app-network
+  # boilerplate:subproject=python axis=persistence option=postgres END
+
+  # One-shot init container: applies seed data after migrations land
+  # (`python -m app.cli seed`). Seeds read APP_POSTGRES_* via Settings.
+  # boilerplate:subproject=python axis=persistence option=postgres START
+  template-be-python-seed:
+    image: template-be-python
+    build:
+      context: ./python
+      dockerfile: Dockerfile
+    command: ["uv", "run", "python", "scripts/seed_postgres.py"]
+    environment:
+      APP_ENV: local
+      APP_POSTGRES_HOST: postgres
+      APP_POSTGRES_PORT: 5432
+      APP_POSTGRES_USER: postgres
+      APP_POSTGRES_PASSWORD: postgres
+      APP_POSTGRES_DB: template_be_python
+    depends_on:
+      template-be-python-migrate:
+        condition: service_completed_successfully
+    restart: "no"
+    networks:
+      - app-network
+  # boilerplate:subproject=python axis=persistence option=postgres END
+
+  template-be-python:
+    image: template-be-python
+    build:
+      context: ./python
+      dockerfile: Dockerfile
+    environment:
+      APP_ENV: local
+      # boilerplate:subproject=python axis=persistence option=postgres START
+      APP_POSTGRES_HOST: postgres
+      APP_POSTGRES_PORT: 5432
+      APP_POSTGRES_USER: postgres
+      APP_POSTGRES_PASSWORD: postgres
+      APP_POSTGRES_DB: template_be_python
+      # boilerplate:subproject=python axis=persistence option=postgres END
+      # boilerplate:subproject=python axis=cache option=redis START
+      APP_REDIS_HOST: redis
+      APP_REDIS_PORT: 6379
+      APP_REDIS_PASSWORD: redispass
+      APP_REDIS_DB: 1
+      # boilerplate:subproject=python axis=cache option=redis END
+      # boilerplate:subproject=python axis=auth option=jwt START
+      APP_JWT_SECRET: dev-only-secret-do-not-use-in-prod-32-chars
+      APP_JWT_ISSUER: ""
+      APP_JWT_AUDIENCE: ""
+      APP_JWT_ACCESS_TTL_SEC: 3600
+      APP_JWT_REFRESH_TTL_SEC: 86400
+      # boilerplate:subproject=python axis=auth option=jwt END
+      # boilerplate:subproject=python axis=rpc option=grpc START
+      APP_GRPC_HOST: 0.0.0.0
+      APP_GRPC_PORT: 50051
+      # boilerplate:subproject=python axis=rpc option=grpc END
+    ports:
+      - "8001:8000"
+      # boilerplate:subproject=python axis=rpc option=grpc START
+      - "50052:50051"
+      # boilerplate:subproject=python axis=rpc option=grpc END
+    depends_on:
+      template-be-python-seed:
+        condition: service_completed_successfully
+      # boilerplate:subproject=python axis=cache option=redis START
+      redis:
+        condition: service_healthy
+      # boilerplate:subproject=python axis=cache option=redis END
+    # Use 127.0.0.1, not localhost: uvicorn binds IPv4 (0.0.0.0) only,
+    # while localhost may resolve to ::1 first, failing the probe.
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+    networks:
+      - app-network
+  # boilerplate:subproject=python END
+
+  # boilerplate:subproject=java START
+  # One-shot init containers: apply Flyway migrations then demo seed data via
+  # the app's CLI (`java -jar app.jar migrate` / `seed`). Compose runs these
+  # once, waiting for each to exit 0 before the next. Only postgres is wired
+  # here (mirrors the Go subproject). When mysql/mongodb support lands, broaden
+  # the axis markers below and add dialect-specific migrate/seed env.
+  # boilerplate:subproject=java axis=persistence option=postgres START
+  template-be-java-migrate:
+    image: template-be-java
+    build:
+      context: ./java
+      dockerfile: Dockerfile
+    # Appended to the image ENTRYPOINT (`java -jar app.jar`) → runs the migrate command.
+    command: ["migrate"]
+    environment:
+      PERSISTENCE_BACKEND: postgres
+      POSTGRES_URL: jdbc:postgresql://postgres:5432/template_be_java
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      CACHE_BACKEND: inmemory
+      AUTH_MODE: jwt
+      JWT_SECRET: dev-only-secret-do-not-use-in-prod-32-chars
+      OBSERVABILITY_BACKEND: noop
+      NOTIFICATION_BACKEND: noop
+      STORAGE_BACKEND: local
+      LOCAL_STORAGE_PATH: /tmp/template-storage
+      SECRETS_BACKEND: env
+      INFERENCE_BACKEND: noop
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+    networks:
+      - app-network
+
+  template-be-java-seed:
+    image: template-be-java
+    build:
+      context: ./java
+      dockerfile: Dockerfile
+    # Appended to the image ENTRYPOINT (`java -jar app.jar`) → runs the seed command.
+    command: ["seed"]
+    environment:
+      PERSISTENCE_BACKEND: postgres
+      POSTGRES_URL: jdbc:postgresql://postgres:5432/template_be_java
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      CACHE_BACKEND: inmemory
+      AUTH_MODE: jwt
+      JWT_SECRET: dev-only-secret-do-not-use-in-prod-32-chars
+      OBSERVABILITY_BACKEND: noop
+      NOTIFICATION_BACKEND: noop
+      STORAGE_BACKEND: local
+      LOCAL_STORAGE_PATH: /tmp/template-storage
+      SECRETS_BACKEND: env
+      INFERENCE_BACKEND: noop
+    depends_on:
+      template-be-java-migrate:
+        condition: service_completed_successfully
+    restart: "no"
+    networks:
+      - app-network
+  # boilerplate:subproject=java axis=persistence option=postgres END
+
+  template-be-java:
+    image: template-be-java
+    build:
+      context: ./java
+      dockerfile: Dockerfile
+    environment:
+      # boilerplate:subproject=java axis=persistence option=postgres START
+      PERSISTENCE_BACKEND: postgres
+      POSTGRES_URL: jdbc:postgresql://postgres:5432/template_be_java
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      # boilerplate:subproject=java axis=persistence option=postgres END
+      # boilerplate:subproject=java axis=persistence option=mysql START
+      # Non-canonical MYSQL_* names (not spring.datasource.*): in the unpruned
+      # tree these must NOT clobber the active postgres datasource. When mysql
+      # is the selected backend, a manifest codemod rewrites application.yml's
+      # spring.datasource.* + spring.flyway.locations to read these vars.
+      MYSQL_URL: jdbc:mysql://mysql:3306/template_be_java
+      MYSQL_USER: mysql
+      MYSQL_PASSWORD: mysql
+      # boilerplate:subproject=java axis=persistence option=mysql END
+      # boilerplate:subproject=java axis=persistence option=mongodb START
+      # Spring Boot 4.x relocated the Mongo connection URI from
+      # spring.data.mongodb.uri to spring.mongodb.uri (base module
+      # spring-boot-mongodb; spring.data.mongodb.* now holds only Spring
+      # Data settings like auto-index-creation). The old SPRING_DATA_MONGODB_URI
+      # is silently ignored → the driver falls back to localhost:27017.
+      SPRING_MONGODB_URI: mongodb://mongo:mongo@mongodb:27017/template_be_java?authSource=admin
+      # auto-index-creation makes @Indexed(unique=true) email enforce at runtime,
+      # matching the UNIQUE constraint postgres/mysql get via migration.
+      SPRING_DATA_MONGODB_AUTO_INDEX_CREATION: "true"
+      # boilerplate:subproject=java axis=persistence option=mongodb END
+      # boilerplate:subproject=java axis=cache option=redis START
+      CACHE_BACKEND: redis
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: redispass
+      REDIS_DB: 1
+      # boilerplate:subproject=java axis=cache option=redis END
+      # boilerplate:subproject=java axis=auth option=jwt START
+      AUTH_MODE: jwt
+      JWT_SECRET: dev-only-secret-do-not-use-in-prod-32-chars
+      JWT_ACCESS_TTL_SEC: 3600
+      JWT_REFRESH_TTL_SEC: 86400
+      # boilerplate:subproject=java axis=auth option=jwt END
+      # boilerplate:subproject=java axis=auth option=apikey START
+      API_KEY_HEADER: X-API-Key
+      API_KEYS: dev-sample-key-please-rotate
+      # boilerplate:subproject=java axis=auth option=apikey END
+      # boilerplate:subproject=java axis=auth option=oauth2-oidc START
+      OIDC_ISSUER_URL: https://issuer.example.com
+      OIDC_CLIENT_ID: template-be-java
+      OIDC_AUDIENCE: template-be-java
+      # boilerplate:subproject=java axis=auth option=oauth2-oidc END
+      OBSERVABILITY_BACKEND: noop
+      NOTIFICATION_BACKEND: noop
+      STORAGE_BACKEND: local
+      LOCAL_STORAGE_PATH: /tmp/template-storage
+      SECRETS_BACKEND: env
+      INFERENCE_BACKEND: noop
+      # boilerplate:subproject=java axis=rpc option=grpc START
+      GRPC_HOST: 0.0.0.0
+      GRPC_PORT: 50051
+      # boilerplate:subproject=java axis=rpc option=grpc END
+    ports:
+      - "8002:8080"
+      # boilerplate:subproject=java axis=rpc option=grpc START
+      # Host port 50053 (Go uses 50051, Python 50052); container port stays
+      # 50051 so GRPC_PORT parity holds. Only one subproject survives a prune.
+      - "50053:50051"
+      # boilerplate:subproject=java axis=rpc option=grpc END
+    depends_on:
+      # boilerplate:subproject=java axis=persistence option=postgres START
+      postgres:
+        condition: service_healthy
+      template-be-java-seed:
+        condition: service_completed_successfully
+      # boilerplate:subproject=java axis=persistence option=postgres END
+      # boilerplate:subproject=java axis=persistence option=mysql START
+      mysql:
+        condition: service_healthy
+      # boilerplate:subproject=java axis=persistence option=mysql END
+      # boilerplate:subproject=java axis=persistence option=mongodb START
+      mongodb:
+        condition: service_healthy
+      # boilerplate:subproject=java axis=persistence option=mongodb END
+      # boilerplate:subproject=java axis=cache option=redis START
+      redis:
+        condition: service_healthy
+      # boilerplate:subproject=java axis=cache option=redis END
+    # The JRE runtime image ships no curl/wget, and /api/v1/todos is behind the
+    # auth guard (returns 401), so an HTTP probe can't work here. Use the app's
+    # own `healthcheck` subcommand instead — it probes the local server and
+    # treats any <500 response (including the 401) as "up". Mirrors Go's
+    # `/backend healthcheck`. ENTRYPOINT is bypassed by CMD, so invoke the jar.
+    healthcheck:
+      test: ["CMD", "java", "-jar", "/app/app.jar", "healthcheck"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+    networks:
+      - app-network
+  # boilerplate:subproject=java END
+
+  # boilerplate:subproject=java axis=container option=nginx START
+  template-be-java-nginx:
+    image: nginx:1.27-alpine
+    volumes:
+      - ./java/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    ports:
+      - "8082:80"
+    depends_on:
+      - template-be-java
+    networks:
+      - app-network
+  # boilerplate:subproject=java axis=container option=nginx END
+
+  # boilerplate:subproject=nextjs START
+  frontend-belajar-lintas-ronald:
+    image: frontend-belajar-lintas-ronald
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        # HORIZON_KEY: npm auth token for @squantumengine/* private scope.
+        # Source: frontend/.env (see frontend/.env-example).
+        # Compose interpolates ${HORIZON_KEY} from that .env into the
+        # Dockerfile ARG; the build stage writes a transient .npmrc
+        # and removes it after pnpm install.
+        HORIZON_KEY: ${HORIZON_KEY}
+        # All NEXT_PUBLIC_* vars are build ARGs — Next.js bakes them into
+        # the browser bundle at build time. Changes require a full rebuild.
+        NEXT_PUBLIC_BACKEND_URL: ${NEXT_PUBLIC_BACKEND_URL}
+        NEXT_PUBLIC_RENDERING_MODE: ${NEXT_PUBLIC_RENDERING_MODE}
+        NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME}
+        # boilerplate:subproject=nextjs axis=mocking option=msw START
+        NEXT_PUBLIC_API_MOCKING: ${NEXT_PUBLIC_API_MOCKING}
+        # boilerplate:subproject=nextjs axis=mocking option=msw END
+        # boilerplate:subproject=nextjs axis=rendering option=csr START
+        NEXT_PUBLIC_ENCRYPTION_KEY: ${NEXT_PUBLIC_ENCRYPTION_KEY}
+        # boilerplate:subproject=nextjs axis=rendering option=csr END
+        # boilerplate:subproject=nextjs axis=auth option=jwt-refresh START
+        NEXT_PUBLIC_ENABLE_REFRESH_TOKEN: ${NEXT_PUBLIC_ENABLE_REFRESH_TOKEN}
+        # boilerplate:subproject=nextjs axis=auth option=jwt-refresh END
+    # Runtime env: read directly from frontend/.env so updates to server-
+    # side vars (AUTH_COOKIE_SECRET, etc.) only need `compose restart`,
+    # not a full rebuild. NEXT_PUBLIC_* vars are still baked at build
+    # time by next build — those DO need a rebuild when changed.
+    env_file:
+      - frontend/.env
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      HOSTNAME: 0.0.0.0
+      # Override BACKEND_URL for server-side fetch via docker network
+      # (browser-side bundle is baked with the value from frontend/.env).
+      NEXT_PUBLIC_BACKEND_URL: http://backend-belajar-lintas-ronald:8000
+    ports:
+      - "3000:3000"
+    # Use 127.0.0.1, not localhost: the standalone server binds IPv4
+    # (0.0.0.0) only, while localhost resolves to ::1 first inside Alpine,
+    # which would make the probe fail with "connection refused".
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+    networks:
+      - app-network
+  # boilerplate:subproject=nextjs END
+
+networks:
+  app-network:
+    driver: bridge

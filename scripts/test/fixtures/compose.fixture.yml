@@ -1,0 +1,42 @@
+services:
+  # boilerplate:subproject=golang axis=persistence option=postgres START
+  postgres:
+    image: postgres:16-alpine
+    ports:
+      - "5432:5432"
+  # boilerplate:subproject=golang axis=persistence option=postgres END
+
+  # boilerplate:subproject=golang axis=persistence option=mysql START
+  mysql:
+    image: mysql:8.0
+    ports:
+      - "3306:3306"
+  # boilerplate:subproject=golang axis=persistence option=mysql END
+
+  # boilerplate:subproject=golang axis=cache option=redis START
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+  # boilerplate:subproject=golang axis=cache option=redis END
+
+  # boilerplate:subproject=golang,nextjs axis=storage option=minio START
+  minio:
+    image: minio/minio:latest
+    ports:
+      - "9000:9000"
+  # boilerplate:subproject=golang,nextjs axis=storage option=minio END
+
+  # boilerplate:subproject=golang START
+  backend-belajar-lintas-ronald:
+    image: backend-belajar-lintas-ronald
+    ports:
+      - "8000:8000"
+  # boilerplate:subproject=golang END
+
+  # boilerplate:subproject=nextjs START
+  frontend-belajar-lintas-ronald:
+    image: frontend-belajar-lintas-ronald
+    ports:
+      - "3000:3000"
+  # boilerplate:subproject=nextjs END

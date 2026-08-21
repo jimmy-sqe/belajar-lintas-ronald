@@ -1,0 +1,173 @@
+name: CI - Staging and Production Environment
+
+on:
+  push:
+    tags:
+      - 'v*'
+    paths:
+      - 'backend/**'
+      - '.github/workflows/ci-stg-prod.yml'
+
+env:
+  # TODO(boilerplate): replace with your container registry paths for staging and production.
+  STAGING_IMAGE_REPO: asia-southeast2-docker.pkg.dev/<your-gcp-project-nonprod>/<your-registry>/staging/backend-belajar-lintas-ronald
+  PRODUCTION_IMAGE_REPO: asia-southeast2-docker.pkg.dev/<your-gcp-project-prod>/<your-registry>/backend-belajar-lintas-ronald
+
+jobs:
+  run-tests:
+    name: Run tests
+    uses: <your-org>/backend-belajar-lintas-ronald/.github/workflows/reusable-test.yml@main
+    secrets:
+      SECRETMANAGER_SECRET: ${{ secrets.STAGING_SECRETMANAGER_SECRET }}
+      SSH_PRIVATE_KEY_PRIVATE_GO_MODULE: ${{ secrets.SSH_PRIVATE_KEY_PRIVATE_GO_MODULE }}
+      WIREGUARD_CONFIG: ${{ secrets.WIREGUARD_CONFIG }}
+      SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+  metadata:
+    name: Extract Metadata
+    runs-on: ubuntu-latest
+    needs:
+      - run-tests
+    outputs:
+      branch: ${{ steps.metadata.outputs.branch }}
+      tag: ${{ steps.metadata.outputs.tag }}
+      commit_message: Tag ${{ github.ref_name }}
+    steps:
+      - uses: actions/checkout@v3
+      - id: metadata
+        # TODO(boilerplate): wire to your org's metadata-extraction action.
+        uses: <your-org>/<your-actions-repo>/extract-metadata@main
+
+  build-push:
+    name: Build and Push Image
+    runs-on: ubuntu-latest
+    needs:
+      - metadata
+
+    steps:
+      - id: checkout
+        name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Login to GCR (staging)
+        uses: docker/login-action@v2
+        with:
+          registry: asia-southeast2-docker.pkg.dev
+          username: _json_key
+          password: ${{ secrets.STAGING_GAR_JSON_KEY }}
+
+      - id: docker-push-tagged-staging
+        name: Tag Docker image and push to Google Artifact Registry (staging)
+        uses: docker/build-push-action@v3
+        with:
+          file: Dockerfile
+          push: true
+          build-args: |
+            ssh_prv_key=${{ secrets.SSH_PRIVATE_KEY_PRIVATE_GO_MODULE_ENCODED }}
+          tags: |
+            asia-southeast2-docker.pkg.dev/<your-gcp-project-nonprod>/<your-registry>/staging/backend-belajar-lintas-ronald:${{ needs.metadata.outputs.tag }}
+
+      - name: Login to GCR (production)
+        uses: docker/login-action@v2
+        with:
+          registry: asia-southeast2-docker.pkg.dev
+          username: _json_key
+          password: ${{ secrets.PRODUCTION_GAR_JSON_KEY }}
+
+      - id: docker-push-tagged-production
+        name: Tag Docker image and push to Google Artifact Registry (production)
+        uses: docker/build-push-action@v3
+        with:
+          file: Dockerfile
+          push: true
+          build-args: |
+            ssh_prv_key=${{ secrets.SSH_PRIVATE_KEY_PRIVATE_GO_MODULE_ENCODED }}
+          tags: |
+            asia-southeast2-docker.pkg.dev/<your-gcp-project-prod>/<your-registry>/backend-belajar-lintas-ronald:${{ needs.metadata.outputs.tag }}
+
+  modify-env-manifest:
+    name: Modify Env Repository Manifest
+    runs-on: ubuntu-latest
+    env:
+      CI_COMMIT_MESSAGE: "[${{ github.event.repository.name }}] New release ${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ needs.metadata.outputs.tag }}"
+      CI_COMMIT_AUTHOR_NAME: ${{ github.event.repository.name }}
+      CI_COMMIT_AUTHOR_EMAIL: ${{ github.actor }}@users.noreply.github.com
+    needs:
+      - build-push
+      - metadata
+
+    steps:
+      # Update Staging GitOps manifest
+      # TODO(boilerplate): point to your GitOps repo (path/name) so deploys land in the right manifests.
+      - uses: actions/checkout@v4
+        with:
+          repository: <your-org>/<your-gitops-repo>
+          token: ${{ secrets.GH_PAT }}
+          path: <your-gitops-repo>
+          fetch-depth: 1
+      - name: Update Image Version
+        uses: fjogeleit/yaml-update-action@v0.13.2
+        with:
+          valueFile: 'backend-belajar-lintas-ronald/overlays/staging/patches/deployment-api-patch.yaml'
+          repository: <your-org>/<your-gitops-repo>
+          message: 'chore(deploy): [Staging] Update service (backend-belajar-lintas-ronald) image version to (${{ needs.metadata.outputs.tag }})'
+          createPR: false
+          branch: main
+          targetBranch: main
+          token: ${{ secrets.GH_PAT }}
+          workDir: <your-gitops-repo>
+          changes: |
+            {
+              "backend-belajar-lintas-ronald/overlays/staging/patches/deployment-api-patch.yaml": {
+                "spec.template.spec.containers[0].image": "${{ env.STAGING_IMAGE_REPO }}:${{ needs.metadata.outputs.tag }}",
+                "metadata.labels['tags.datadoghq.com/version']": "${{ needs.metadata.outputs.tag }}",
+                "spec.template.metadata.labels['tags.datadoghq.com/version']": "${{ needs.metadata.outputs.tag }}"
+              },
+              "backend-belajar-lintas-ronald/overlays/staging/patches/deployment-worker-patch.yaml": {
+                "spec.template.spec.containers[0].image": "${{ env.STAGING_IMAGE_REPO }}:${{ needs.metadata.outputs.tag }}"
+              },
+              "backend-belajar-lintas-ronald/overlays/staging/patches/job-patch.yaml": {
+                "spec.template.spec.containers[0].image": "${{ env.STAGING_IMAGE_REPO }}:${{ needs.metadata.outputs.tag }}"
+              },
+              "backend-belajar-lintas-ronald/overlays/staging/cronjob.yaml": {
+                "spec.jobTemplate.spec.template.spec.containers[0].image": "${{ env.STAGING_IMAGE_REPO }}:${{ needs.metadata.outputs.tag }}"
+              }
+            }
+
+      # Update Production GitOps manifest
+      # TODO(boilerplate): point to your GitOps repo (path/name) so deploys land in the right manifests.
+      - uses: actions/checkout@v4
+        with:
+          repository: <your-org>/<your-gitops-repo>
+          token: ${{ secrets.GH_PAT }}
+          path: <your-gitops-repo>
+          fetch-depth: 1
+      - name: Update Image Version
+        uses: fjogeleit/yaml-update-action@v0.13.2
+        with:
+          valueFile: 'backend-belajar-lintas-ronald/overlays/prod/patches/deployment-api-patch.yaml'
+          repository: <your-org>/<your-gitops-repo>
+          message: 'chore(deploy): [Production] Update service (backend-belajar-lintas-ronald) image version to (${{ needs.metadata.outputs.tag }})'
+          createPR: false
+          branch: main
+          targetBranch: main
+          token: ${{ secrets.GH_PAT }}
+          workDir: <your-gitops-repo>
+          changes: |
+            {
+              "backend-belajar-lintas-ronald/overlays/prod/patches/deployment-api-patch.yaml": {
+                "spec.template.spec.containers[0].image": "${{ env.PRODUCTION_IMAGE_REPO }}:${{ needs.metadata.outputs.tag }}",
+                "metadata.labels['tags.datadoghq.com/version']": "${{ needs.metadata.outputs.tag }}",
+                "spec.template.metadata.labels['tags.datadoghq.com/version']": "${{ needs.metadata.outputs.tag }}"
+              },
+              "backend-belajar-lintas-ronald/overlays/prod/patches/deployment-worker-patch.yaml": {
+                "spec.template.spec.containers[0].image": "${{ env.PRODUCTION_IMAGE_REPO }}:${{ needs.metadata.outputs.tag }}"
+              },
+              "backend-belajar-lintas-ronald/overlays/prod/patches/job-patch.yaml": {
+                "spec.template.spec.containers[0].image": "${{ env.PRODUCTION_IMAGE_REPO }}:${{ needs.metadata.outputs.tag }}"
+              },
+              "backend-belajar-lintas-ronald/overlays/prod/cronjob.yaml": {
+                "spec.jobTemplate.spec.template.spec.containers[0].image": "${{ env.PRODUCTION_IMAGE_REPO }}:${{ needs.metadata.outputs.tag }}"
+              }
+            }

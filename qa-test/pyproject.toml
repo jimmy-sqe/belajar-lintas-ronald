@@ -1,0 +1,97 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "qa-test-belajar_lintas_ronald"
+version = "0.1.0"
+description = "Pytest + Playwright UI/API automation suite (belajar-lintas-ronald)"
+requires-python = ">=3.11"
+dependencies = [
+    "pytest==8.3.3",
+    "pytest-playwright==0.5.2",
+    # boilerplate:axis=parallel-exec option=xdist START
+    "pytest-xdist==3.6.1",
+    # boilerplate:axis=parallel-exec option=xdist END
+    "pytest-rerunfailures==14.0",
+    "pytest-html==4.1.1",
+    # boilerplate:axis=reporting option=allure START
+    "allure-pytest==2.13.5",
+    # boilerplate:axis=reporting option=allure END
+    "pydantic-settings==2.7.0",
+    "python-dotenv==1.0.0",
+    # boilerplate:axis=api-testing option=wired START
+    "requests==2.32.3",
+    "faker==30.3.0",
+    # boilerplate:axis=api-testing option=wired END
+]
+
+[project.optional-dependencies]
+dev = [
+    "ruff==0.7.0",
+    "mypy==1.13.0",
+    # boilerplate:axis=api-testing option=wired START
+    "types-requests==2.32.0.20240914",
+    # boilerplate:axis=api-testing option=wired END
+    "pre-commit==4.0.1",
+]
+
+[tool.setuptools.packages.find]
+include = ["framework*", "pages*"]
+exclude = ["tests*", "docs*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+pythonpath = ["."]
+addopts = [
+    "--strict-markers",
+    "-p", "no:base_url",
+    "--browser=chromium",
+    "--tracing=retain-on-failure",
+    "--video=retain-on-failure",
+    "--screenshot=only-on-failure",
+    "--output=pytest-results",
+    "--html=pytest-results/report.html",
+    "--self-contained-html",
+    # boilerplate:axis=reporting option=allure START
+    # NOTE: kept OUTSIDE --output because pytest-playwright wipes that dir at
+    # session start (delete_output_dir autouse fixture).
+    "--alluredir=allure-results",
+    # boilerplate:axis=reporting option=allure END
+#    "--headed", #uncomment this line to run tests in headed mode (default: headless)
+    # boilerplate:axis=parallel-exec option=xdist START
+#    "-n", "4", #uncomment this line to enable parallel test execution, the number can be automatically set to the number of CPU cores for optimal performance
+    # boilerplate:axis=parallel-exec option=xdist END
+]
+markers = [
+    # boilerplate:axis=sample-suite option=general-service START
+    "belajar_lintas_ronald: belajar_lintas_ronald project tests",
+    # boilerplate:axis=sample-suite option=general-service END
+    "viewport(width, height): override browser viewport for this test",
+    "flaky: known-flaky test, allow up to 2 reruns",
+    "smoke: critical-path test, runs on every PR",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM"]
+
+[tool.ruff.lint.per-file-ignores]
+# api.py and auth.py carry axis-marker comment blocks inside their import
+# groups (the sample-suite imports). Ruff's isort blank-line rules around those
+# marker comments conflict between the wired and pruned states, so import
+# ordering in these two wiring files is maintained manually. mypy still
+# enforces that all imports resolve in every prune state.
+"framework/api.py" = ["I001"]
+"framework/auth.py" = ["I001"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+ignore_missing_imports = true
+explicit_package_bases = true
+namespace_packages = true

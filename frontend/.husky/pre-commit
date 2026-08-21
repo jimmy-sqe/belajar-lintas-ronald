@@ -1,0 +1,13 @@
+#!/usr/bin/env sh
+# Husky pre-commit hook for nextjs/
+# Runs ESLint + Prettier on staged FE files.
+
+cd "$(git rev-parse --show-toplevel)/nextjs"
+
+pnpm run lint:fix || exit 1
+
+# Prettier on staged files (relative to repo root, we already cd'd into nextjs/)
+staged=$(git diff --cached --name-only --diff-filter=ACMR --relative=nextjs/ | sed 's| |\\ |g')
+[ -z "$staged" ] || pnpm exec prettier $staged --write --ignore-unknown
+
+git update-index --again

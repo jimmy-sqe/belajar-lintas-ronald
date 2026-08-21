@@ -1,0 +1,23 @@
+version: 1
+name: backend-belajar-lintas-ronald
+axes:
+  persistence:
+    multiplicity: one_or_more
+    options:
+      postgres: {}
+      mysql: {}
+      mongodb: {}
+  cache:
+    multiplicity: exactly_one
+    options:
+      redis: {}
+      inmemory: {}
+      noop: {}
+  storage:
+    multiplicity: exactly_one
+    options:
+      gcs: {}
+      s3: {}
+      minio: {}
+      local: {}
+      noop: {}
